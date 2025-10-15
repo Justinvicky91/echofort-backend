@@ -1,0 +1,56 @@
+CREATE TABLE IF NOT EXISTS users (
+  id BIGSERIAL PRIMARY KEY,
+  identity VARCHAR(64) UNIQUE NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  last_login TIMESTAMP,
+  device_id VARCHAR(128),
+  device_bound BOOLEAN NOT NULL DEFAULT FALSE,
+  trial_started_at TIMESTAMP,
+  trial_fingerprint VARCHAR(128)
+);
+
+CREATE TABLE IF NOT EXISTS otps (
+  id BIGSERIAL PRIMARY KEY,
+  identity VARCHAR(64) NOT NULL,
+  code VARCHAR(6) NOT NULL,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS employee_logins (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  event VARCHAR(16) NOT NULL,
+  ip VARCHAR(64),
+  ua TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ai_usage (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT,
+  endpoint VARCHAR(64) NOT NULL,
+  cost_rs NUMERIC(10,2) NOT NULL DEFAULT 0,
+  meta JSONB,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS marketing_push (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  status VARCHAR(16) NOT NULL DEFAULT 'DRAFT',
+  approver_id BIGINT,
+  approved_at TIMESTAMP,
+  sent_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS webhook_logs (
+  id BIGSERIAL PRIMARY KEY,
+  provider VARCHAR(16) NOT NULL,
+  event TEXT NOT NULL,
+  ok BOOLEAN NOT NULL,
+  error TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
