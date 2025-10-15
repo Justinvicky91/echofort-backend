@@ -1,8 +1,9 @@
 # app/main.py
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy import text
+from fastapi.concurrency import run_in_threadpool
+
+from sqlalchemy import create_engine, text
 from pathlib import Path
 import os
 
@@ -27,36 +28,48 @@ def make_app():
         allow_headers=["*"],
     )
 
-  # ---- ensure psycopg driver (works with async engine) ----
-db_url = s.DATABASE_URL
-if db_url.startswith("postgresql+asyncpg://"):
-    db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
-elif db_url.startswith("postgresql://"):
-    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    # ---- build sync engine; force psycopg driver prefix if needed ----
+    db_url = s.DATABASE_URL
+    if db_url.startswith("postgresql+asyncpg://"):
+        db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
+    elif db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
+    engine = create_engine(db_url, pool_pre_ping=True, future=True)
 
+    # Small async shim so existing code can keep using: await db.execute(text(...))
+    class AsyncDB:
+        def __init__(self, _engine):
+            self._engine = _engine
 
-    engine = create_async_engine(db_url, echo=False, future=True)
-    Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+        async def execute(self, clause, params=None):
+            def _exec():
+                with self._engine.begin() as conn:
+                    return conn.execute(clause, params or {})
+            return await run_in_threadpool(_exec)
 
     @app.on_event("startup")
     async def startup():
-        app.state.db = Session()
-        # Try auto-migrate silently (idempotent)
-        try:
+        app.state.db = AsyncDB(engine)
+
+        # ---- auto-migrate on boot (idempotent) ----
+        def _apply():
             base = Path(__file__).resolve().parents[1]  # repo root
             mdir = base / "migrations"
             for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
-                async with engine.begin() as conn:
-                    await conn.exec_driver_sql(sql)
+                with engine.begin() as conn:
+                    conn.exec_driver_sql(sql)
+        try:
+            await run_in_threadpool(_apply)
             print("Auto-migrations applied.")
         except Exception as e:
             print("Auto-migrate skipped:", e)
 
     @app.on_event("shutdown")
     async def shutdown():
-        await app.state.db.close()
+        # nothing to close: engine uses pool
+        pass
 
     # --------- routes ---------
     app.include_router(otp.router)
@@ -73,24 +86,30 @@ elif db_url.startswith("postgresql://"):
     app.include_router(export_csv.router)
     app.include_router(social.router)
 
-    # One-time admin migration endpoint (GET or POST) secured by MIGRATE_KEY
+    # One-time admin migration endpoint (GET/POST) secured by MIGRATE_KEY
     @app.api_route("/admin/run-migrations", methods=["GET", "POST"])
     async def run_migrations(request: Request, key: str):
         token = os.getenv("MIGRATE_KEY")
         if not token or key != token:
             raise HTTPException(status_code=403, detail="Bad token")
-        base = Path(__file__).resolve().parents[1]
-        mdir = base / "migrations"
-        for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
-            sql = (mdir / fname).read_text(encoding="utf-8")
-            async with engine.begin() as conn:
-                await conn.exec_driver_sql(sql)
+
+        def _apply():
+            base = Path(__file__).resolve().parents[1]
+            mdir = base / "migrations"
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
+                sql = (mdir / fname).read_text(encoding="utf-8")
+                with engine.begin() as conn:
+                    conn.exec_driver_sql(sql)
+        await run_in_threadpool(_apply)
         return {"ok": True}
 
     @app.get("/health")
     async def health():
         try:
-            await app.state.db.execute(text("SELECT 1"))
+            def _ping():
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+            await run_in_threadpool(_ping)
             db_ok = True
         except Exception:
             db_ok = False
