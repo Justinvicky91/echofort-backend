@@ -27,12 +27,13 @@ def make_app():
         allow_headers=["*"],
     )
 
-  # ---- force async driver (asyncpg) ----
+  # ---- ensure psycopg driver (works with async engine) ----
 db_url = s.DATABASE_URL
-if db_url.startswith("postgresql+psycopg://"):
-    db_url = db_url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
+if db_url.startswith("postgresql+asyncpg://"):
+    db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
 elif db_url.startswith("postgresql://"):
-    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
 
 
     engine = create_async_engine(db_url, echo=False, future=True)
