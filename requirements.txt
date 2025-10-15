@@ -18,3 +18,5 @@ Pillow==10.4.0
 opencv-python-headless==4.10.0.84
 scikit-learn==1.5.2
 tqdm==4.66.5
+asyncpg==0.29.0
+
