@@ -1,10 +1,10 @@
 # app/main.py
 from fastapi import FastAPI, Request, HTTPException
-import os
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import text
 from pathlib import Path
+import os
 
 from .deps import get_settings
 from .auth import otp, device
@@ -27,7 +27,7 @@ def make_app():
         allow_headers=["*"],
     )
 
-    # ---- DB URL ensure psycopg driver ----
+    # ---- ensure psycopg driver even if DATABASE_URL came from a reference ----
     db_url = s.DATABASE_URL
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
@@ -38,9 +38,9 @@ def make_app():
     @app.on_event("startup")
     async def startup():
         app.state.db = Session()
-        # ---- auto-migrate on boot (001–003) ----
+        # Try auto-migrate silently (idempotent)
         try:
-            base = Path(__file__).resolve().parents[1]  # repo root (backend/)
+            base = Path(__file__).resolve().parents[1]  # repo root
             mdir = base / "migrations"
             for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
@@ -54,7 +54,7 @@ def make_app():
     async def shutdown():
         await app.state.db.close()
 
-    # Routes
+    # --------- routes ---------
     app.include_router(otp.router)
     app.include_router(device.router)
     app.include_router(voice.router)
@@ -69,6 +69,20 @@ def make_app():
     app.include_router(export_csv.router)
     app.include_router(social.router)
 
+    # One-time admin migration endpoint (GET or POST) secured by MIGRATE_KEY
+    @app.api_route("/admin/run-migrations", methods=["GET", "POST"])
+    async def run_migrations(request: Request, key: str):
+        token = os.getenv("MIGRATE_KEY")
+        if not token or key != token:
+            raise HTTPException(status_code=403, detail="Bad token")
+        base = Path(__file__).resolve().parents[1]
+        mdir = base / "migrations"
+        for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
+            sql = (mdir / fname).read_text(encoding="utf-8")
+            async with engine.begin() as conn:
+                await conn.exec_driver_sql(sql)
+        return {"ok": True}
+
     @app.get("/health")
     async def health():
         try:
@@ -78,18 +92,6 @@ def make_app():
             db_ok = False
         return {"status": "ok", "db": db_ok, "env": s.APP_ENV}
 
-# ---- one-time manual migration trigger (secure with token) ----
-    @app.post("/admin/run-migrations")
-    async def run_migrations(key: str, request: Request):
-        if key != os.getenv("MIGRATE_KEY"):
-            raise HTTPException(status_code=403, detail="Bad token")
-        base = Path(__file__).resolve().parents[1]  # repo root
-        mdir = base / "migrations"
-        for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
-            sql = (mdir / fname).read_text(encoding="utf-8")
-            async with engine.begin() as conn:
-                await conn.exec_driver_sql(sql)
-        return {"ok": True}
     return app
 
 app = make_app()
