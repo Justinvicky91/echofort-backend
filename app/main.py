@@ -1,5 +1,6 @@
 # app/main.py
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import text
@@ -77,6 +78,18 @@ def make_app():
             db_ok = False
         return {"status": "ok", "db": db_ok, "env": s.APP_ENV}
 
+# ---- one-time manual migration trigger (secure with token) ----
+    @app.post("/admin/run-migrations")
+    async def run_migrations(key: str, request: Request):
+        if key != os.getenv("MIGRATE_KEY"):
+            raise HTTPException(status_code=403, detail="Bad token")
+        base = Path(__file__).resolve().parents[1]  # repo root
+        mdir = base / "migrations"
+        for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
+            sql = (mdir / fname).read_text(encoding="utf-8")
+            async with engine.begin() as conn:
+                await conn.exec_driver_sql(sql)
+        return {"ok": True}
     return app
 
 app = make_app()
