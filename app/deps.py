@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     ALLOW_ORIGINS: str = "*"
     ADMIN_USER_IDS_CSV: str = "1"
     LOG_LEVEL: str = "INFO"
+APP_BOOT_MODE: str = "full"   # "bare" skips DB on startup; use to bypass 502s
+
 
     class Config:
         env_file = ".env"

@@ -2,10 +2,10 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
-
 from sqlalchemy import create_engine, text
 from pathlib import Path
 import os
+import psycopg
 
 from .deps import get_settings
 from .auth import otp, device
@@ -13,6 +13,11 @@ from .ai import voice, image
 from .billing import razorpay_webhooks, stripe_webhooks
 from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv
 from . import social
+
+def pg_dsn_for_psycopg(raw: str) -> str:
+    # psycopg accepts postgresql://; strip any +driver
+    return raw.replace("postgresql+psycopg://", "postgresql://")\
+              .replace("postgresql+asyncpg://", "postgresql://")
 
 def make_app():
     s = get_settings()
@@ -28,48 +33,32 @@ def make_app():
         allow_headers=["*"],
     )
 
-    # ---- build sync engine; force psycopg driver prefix if needed ----
-    db_url = s.DATABASE_URL
-    if db_url.startswith("postgresql+asyncpg://"):
-        db_url = db_url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
-    elif db_url.startswith("postgresql://"):
-        db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    # ---------- boot modes ----------
+    boot_mode = (s.APP_BOOT_MODE or "full").lower().strip()
+    engine = None
 
-    engine = create_engine(db_url, pool_pre_ping=True, future=True)
+    if boot_mode != "bare":
+        # Use sync engine (most reliable on Railway)
+        db_url = s.DATABASE_URL
+        if db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+        engine = create_engine(db_url, pool_pre_ping=True, future=True)
 
-    # Small async shim so existing code can keep using: await db.execute(text(...))
-    class AsyncDB:
-        def __init__(self, _engine):
-            self._engine = _engine
-
-        async def execute(self, clause, params=None):
-            def _exec():
-                with self._engine.begin() as conn:
-                    return conn.execute(clause, params or {})
-            return await run_in_threadpool(_exec)
-
-    @app.on_event("startup")
-    async def startup():
-        app.state.db = AsyncDB(engine)
-
-        # ---- auto-migrate on boot (idempotent) ----
+        # Auto-migrate on boot (idempotent)
         def _apply():
-            base = Path(__file__).resolve().parents[1]  # repo root
+            base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
             for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
         try:
-            await run_in_threadpool(_apply)
+            _apply()
             print("Auto-migrations applied.")
         except Exception as e:
             print("Auto-migrate skipped:", e)
-
-    @app.on_event("shutdown")
-    async def shutdown():
-        # nothing to close: engine uses pool
-        pass
+    else:
+        print("Booting in BARE mode: skipping DB init on startup")
 
     # --------- routes ---------
     app.include_router(otp.router)
@@ -86,25 +75,33 @@ def make_app():
     app.include_router(export_csv.router)
     app.include_router(social.router)
 
-    # One-time admin migration endpoint (GET/POST) secured by MIGRATE_KEY
+    # One-time admin migration endpoint (GET/POST) secured by MIGRATE_KEY, using psycopg directly
     @app.api_route("/admin/run-migrations", methods=["GET", "POST"])
     async def run_migrations(request: Request, key: str):
         token = os.getenv("MIGRATE_KEY")
         if not token or key != token:
             raise HTTPException(status_code=403, detail="Bad token")
-
-        def _apply():
-            base = Path(__file__).resolve().parents[1]
-            mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
-                sql = (mdir / fname).read_text(encoding="utf-8")
-                with engine.begin() as conn:
-                    conn.exec_driver_sql(sql)
-        await run_in_threadpool(_apply)
+        dsn = pg_dsn_for_psycopg(os.getenv("DATABASE_URL", ""))
+        if not dsn:
+            raise HTTPException(500, "DATABASE_URL missing")
+        base = Path(__file__).resolve().parents[1]
+        mdir = base / "migrations"
+        try:
+            with psycopg.connect(dsn) as conn:
+                with conn.cursor() as cur:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql"]:
+                        sql = (mdir / fname).read_text(encoding="utf-8")
+                        cur.execute(sql)
+                conn.commit()
+        except Exception as e:
+            raise HTTPException(500, f"Migration failed: {e}")
         return {"ok": True}
 
     @app.get("/health")
     async def health():
+        if engine is None:
+            # bare boot — app is up, DB not initialized yet
+            return {"status": "ok", "db": None, "env": s.APP_ENV, "mode": "bare"}
         try:
             def _ping():
                 with engine.connect() as conn:
@@ -113,7 +110,7 @@ def make_app():
             db_ok = True
         except Exception:
             db_ok = False
-        return {"status": "ok", "db": db_ok, "env": s.APP_ENV}
+        return {"status": "ok", "db": db_ok, "env": s.APP_ENV, "mode": "full"}
 
     return app
 
