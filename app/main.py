@@ -27,9 +27,9 @@ def make_app():
     s = get_settings()
     app = FastAPI(title="EchoFort API", version="1.0.0")
 
-    # ------------------------------------------------------------
+    # -------------------------------------------------------------
     # CORS
-    # ------------------------------------------------------------
+    # -------------------------------------------------------------
     origins = [o.strip() for o in s.ALLOW_ORIGINS.split(",")] if s.ALLOW_ORIGINS else ["*"]
     app.add_middleware(
         CORSMiddleware,
