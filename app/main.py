@@ -14,16 +14,22 @@ from .billing import razorpay_webhooks, stripe_webhooks
 from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv
 from . import social
 
+
 def pg_dsn_for_psycopg(raw: str) -> str:
-    # psycopg accepts postgresql://; strip any +driver
-    return raw.replace("postgresql+psycopg://", "postgresql://")\
-              .replace("postgresql+asyncpg://", "postgresql://")
+    """psycopg accepts postgresql:// ; strip any +driver suffix."""
+    return (
+        raw.replace("postgresql+psycopg://", "postgresql://")
+        .replace("postgresql+asyncpg://", "postgresql://")
+    )
+
 
 def make_app():
     s = get_settings()
     app = FastAPI(title="EchoFort API", version="1.0.0")
 
+    # ------------------------------------------------------------
     # CORS
+    # ------------------------------------------------------------
     origins = [o.strip() for o in s.ALLOW_ORIGINS.split(",")] if s.ALLOW_ORIGINS else ["*"]
     app.add_middleware(
         CORSMiddleware,
@@ -33,18 +39,22 @@ def make_app():
         allow_headers=["*"],
     )
 
-    # ---------- boot modes ----------
+    # ------------------------------------------------------------
+    # Boot mode & Engine
+    # ------------------------------------------------------------
     boot_mode = (s.APP_BOOT_MODE or "full").lower().strip()
     engine = None
 
     if boot_mode != "bare":
-        # Use sync engine (most reliable on Railway)
+        # Build a psycopg SQLAlchemy URL
         db_url = s.DATABASE_URL
         if db_url.startswith("postgresql://"):
             db_url = db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+        # Reliable sync engine
         engine = create_engine(db_url, pool_pre_ping=True, future=True)
 
-        # Auto-migrate on boot (idempotent)
+        # Idempotent migrations at build/start time
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
@@ -52,6 +62,7 @@ def make_app():
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
+
         try:
             _apply()
             print("Auto-migrations applied.")
@@ -60,7 +71,30 @@ def make_app():
     else:
         print("Booting in BARE mode: skipping DB init on startup")
 
-    # --------- routes ---------
+    # ------------------------------------------------------------
+    # DB shim so routes can await request.app.state.db.execute(...)
+    # ------------------------------------------------------------
+    class DBShim:
+        def __init__(self, _engine):
+            self._engine = _engine
+
+        async def execute(self, clause, params=None):
+            if self._engine is None:
+                # If someone calls DB in bare mode, fail clearly
+                raise RuntimeError("DB not initialized (APP_BOOT_MODE=bare)")
+            def _exec():
+                with self._engine.begin() as conn:
+                    return conn.execute(clause, params or {})
+            return await run_in_threadpool(_exec)
+
+    @app.on_event("startup")
+    async def startup():
+        # Attach the db handle (exists even in bare mode, but will raise if used)
+        app.state.db = DBShim(engine)
+
+    # ------------------------------------------------------------
+    # Routers
+    # ------------------------------------------------------------
     app.include_router(otp.router)
     app.include_router(device.router)
     app.include_router(voice.router)
@@ -75,7 +109,9 @@ def make_app():
     app.include_router(export_csv.router)
     app.include_router(social.router)
 
-    # One-time admin migration endpoint (GET/POST) secured by MIGRATE_KEY, using psycopg directly
+    # ------------------------------------------------------------
+    # Admin: run migrations via psycopg (GET/POST)
+    # ------------------------------------------------------------
     @app.api_route("/admin/run-migrations", methods=["GET", "POST"])
     async def run_migrations(request: Request, key: str):
         token = os.getenv("MIGRATE_KEY")
@@ -97,10 +133,13 @@ def make_app():
             raise HTTPException(500, f"Migration failed: {e}")
         return {"ok": True}
 
+    # ------------------------------------------------------------
+    # Health
+    # ------------------------------------------------------------
     @app.get("/health")
     async def health():
         if engine is None:
-            # bare boot — app is up, DB not initialized yet
+            # bare boot — app is up, DB intentionally not initialized
             return {"status": "ok", "db": None, "env": s.APP_ENV, "mode": "bare"}
         try:
             def _ping():
@@ -113,5 +152,6 @@ def make_app():
         return {"status": "ok", "db": db_ok, "env": s.APP_ENV, "mode": "full"}
 
     return app
+
 
 app = make_app()
