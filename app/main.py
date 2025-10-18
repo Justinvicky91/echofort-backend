@@ -1,5 +1,5 @@
 # app/main.py
-from . import social, gps, screentime, family, subscription
+from . import social, gps, screentime, family, subscription, test_endpoints
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
@@ -114,6 +114,8 @@ def make_app():
     app.include_router(screentime.router)
     app.include_router(family.router)
     app.include_router(subscription.router)
+    app.include_router(test_endpoints.router)
+
 
 
     # ------------------------------------------------------------
