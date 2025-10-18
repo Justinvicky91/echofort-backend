@@ -235,29 +235,46 @@ class EmailService:
         
         return self._send_email(to_email, subject, html)
     
-    def _send_email(self, to_email: str, subject: str, html_body: str):
-        """Internal method to send email via SMTP"""
-        try:
-            msg = MIMEMultipart('alternative')
-            msg['From'] = f"EchoFort <{self.from_email}>"
-            msg['To'] = to_email
-            msg['Subject'] = subject
-            msg['Reply-To'] = self.support_email  # Replies go to support@echofort.ai
-            
-            html_part = MIMEText(html_body, 'html', 'utf-8')
-            msg.attach(html_part)
-            
-            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10) as server:
-                server.starttls()
-                if self.smtp_user and self.smtp_password:
-                    server.login(self.smtp_user, self.smtp_password)
-                server.send_message(msg)
-            
-            print(f"✅ Email sent successfully to {to_email}")
-            return True
-        except Exception as e:
-            print(f"❌ Email sending failed: {str(e)}")
-            return False
+def _send_email(self, to_email: str, subject: str, html_body: str):
+    """Internal method to send email via SMTP"""
+    try:
+        import ssl
+        
+        msg = MIMEMultipart('alternative')
+        msg['From'] = f"EchoFort <{self.from_email}>"
+        msg['To'] = to_email
+        msg['Subject'] = subject
+        msg['Reply-To'] = self.support_email
+        
+        html_part = MIMEText(html_body, 'html', 'utf-8')
+        msg.attach(html_part)
+        
+        # Create secure SSL context for Gmail
+        context = ssl.create_default_context()
+        
+        with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=30) as server:
+            server.set_debuglevel(1)  # Enable debug output
+            server.ehlo()
+            server.starttls(context=context)
+            server.ehlo()
+            server.login(self.smtp_user, self.smtp_password)
+            server.send_message(msg)
+        
+        print(f"✅ Email sent successfully to {to_email}")
+        return True
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication failed: {str(e)}")
+        print(f"   Check Gmail App Password is correct")
+        return False
+    except smtplib.SMTPException as e:
+        print(f"❌ SMTP Error: {str(e)}")
+        return False
+    except Exception as e:
+        print(f"❌ Email sending failed: {str(e)}")
+        import traceback
+        print(f"   Traceback: {traceback.format_exc()}")
+        return False
+
 
 # Global instance
 email_service = EmailService()
