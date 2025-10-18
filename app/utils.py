@@ -1,5 +1,25 @@
 import jwt, hashlib
 from .deps import get_settings
+from fastapi import HTTPException, Header
+from .deps import get_settings
+import jwt
+
+def get_current_user(authorization: str = Header(None)):
+    """Extract user from JWT token"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Missing or invalid authorization header")
+    
+    token = authorization.replace("Bearer ", "")
+    settings = get_settings()
+    
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+        return {"user_id": payload.get("sub"), "device_id": payload.get("device_id")}
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, "Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(401, "Invalid token")
+
 
 def jwt_encode(payload: dict) -> str:
     s = get_settings()

@@ -1,4 +1,5 @@
 # app/main.py
+from . import social, gps, screentime, family, subscription
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
@@ -108,6 +109,12 @@ def make_app():
     app.include_router(privacy.router)
     app.include_router(export_csv.router)
     app.include_router(social.router)
+    # NEW ROUTERS
+    app.include_router(gps.router)
+    app.include_router(screentime.router)
+    app.include_router(family.router)
+    app.include_router(subscription.router)
+
 
     # ------------------------------------------------------------
     # Admin: run migrations via psycopg (GET/POST)
