@@ -90,22 +90,20 @@ class ScamIntelligence:
     
     @classmethod
     async def get_latest_scams(cls, db, days: int = 7) -> List[Dict]:
-        """Get scams discovered in last N days"""
-        try:
-            result = await db.execute("""
-                SELECT scam_type, description, severity, defense_method, discovered_at
-                FROM scam_intelligence
-                WHERE discovered_at >= CURRENT_TIMESTAMP - (INTERVAL '1 day' * :days)
-                ORDER BY 
-                    CASE severity 
-                        WHEN 'critical' THEN 1 
-                        WHEN 'high' THEN 2 
-                        WHEN 'medium' THEN 3
-                        ELSE 4 
-                    END, 
-                    discovered_at DESC
-                LIMIT 10
-            """, {"days": days})
+    """Get scams discovered in last N days"""
+    try:
+        # Calculate date threshold in Python
+        from datetime import datetime, timedelta
+        threshold = datetime.utcnow() - timedelta(days=days)
+        
+        result = await db.execute("""
+            SELECT scam_type, description, severity, defense_method, discovered_at
+            FROM scam_intelligence
+            WHERE discovered_at >= :threshold
+            ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END, discovered_at DESC
+            LIMIT 10
+        """, {"threshold": threshold})
+
             
             scams = []
             for row in result.fetchall():
