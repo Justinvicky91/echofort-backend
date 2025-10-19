@@ -1,6 +1,7 @@
 """
 app/ai_assistant.py - ECHOFORT HYBRID AI SYSTEM
-FINAL VERSION - All features + All fixes from conversation
+FINAL VERSION - All features + All fixes
+Monday, October 20, 2025, 12:23 AM IST
 """
 
 from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
@@ -54,7 +55,7 @@ class ScamIntelligence:
                     },
                     {
                         "scam_type": "Deepfake Video Call Scam",
-                        "description": "Video calls with deepfake of CEO/family member requesting money",
+                        "description": "Video calls with deepfake of CEO/family member requesting money transfer",
                         "severity": "critical",
                         "defense": "Ask questions only real person would know. Verify through another channel.",
                         "source": "fbi.gov"
@@ -67,8 +68,8 @@ class ScamIntelligence:
             try:
                 await db.execute("""
                     INSERT INTO scam_intelligence 
-                    (scam_type, description, severity, defense_method, source, discovered_at)
-                    VALUES (:type, :desc, :sev, :def, :src, CURRENT_TIMESTAMP)
+                    (scam_type, description, severity, defense_method, source, discovered_at, last_seen)
+                    VALUES (:type, :desc, :sev, :def, :src, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT (scam_type) DO UPDATE SET 
                         description = EXCLUDED.description, 
                         severity = EXCLUDED.severity,
@@ -90,20 +91,25 @@ class ScamIntelligence:
     
     @classmethod
     async def get_latest_scams(cls, db, days: int = 7) -> List[Dict]:
-    """Get scams discovered in last N days"""
-    try:
-        # Calculate date threshold in Python
-        from datetime import datetime, timedelta
-        threshold = datetime.utcnow() - timedelta(days=days)
-        
-        result = await db.execute("""
-            SELECT scam_type, description, severity, defense_method, discovered_at
-            FROM scam_intelligence
-            WHERE discovered_at >= :threshold
-            ORDER BY CASE severity WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 ELSE 4 END, discovered_at DESC
-            LIMIT 10
-        """, {"threshold": threshold})
-
+        """Get scams discovered in last N days"""
+        try:
+            # Calculate date threshold using Python datetime
+            threshold = datetime.utcnow() - timedelta(days=days)
+            
+            result = await db.execute("""
+                SELECT scam_type, description, severity, defense_method, discovered_at
+                FROM scam_intelligence
+                WHERE discovered_at >= :threshold
+                ORDER BY 
+                    CASE severity 
+                        WHEN 'critical' THEN 1 
+                        WHEN 'high' THEN 2 
+                        WHEN 'medium' THEN 3
+                        ELSE 4 
+                    END, 
+                    discovered_at DESC
+                LIMIT 10
+            """, {"threshold": threshold})
             
             scams = []
             for row in result.fetchall():
