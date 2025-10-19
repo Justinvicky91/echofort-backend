@@ -116,9 +116,9 @@ def make_app():
     app.include_router(family.router)
     app.include_router(subscription.router)
     app.include_router(test_endpoints.router)
-app.include_router(payment_gateway.router)
-app.include_router(ai_assistant.router)
-app.include_router(invoice_generator.router)
+    app.include_router(payment_gateway.router)
+    app.include_router(ai_assistant.router)
+    app.include_router(invoice_generator.router)
 
 
 
