@@ -107,15 +107,15 @@ class ScamIntelligence:
         """Get scams discovered in last N days"""
         try:
             result = await db.execute("""
-                SELECT scam_type, description, severity, defense_method, discovered_at
-                FROM scam_intelligence
-                WHERE discovered_at >= NOW() - INTERVAL '1 day' * :days
-                ORDER BY CASE severity 
-                    WHEN 'critical' THEN 1 
-                    WHEN 'high' THEN 2 
-                    ELSE 3 END, 
-                discovered_at DESC
-                LIMIT 10
+           SELECT scam_type, description, severity, defense_method, discovered_at
+           FROM scam_intelligence
+           WHERE discovered_at >= CURRENT_TIMESTAMP - (INTERVAL '1 day' * :days)
+           ORDER BY CASE severity 
+           WHEN 'critical' THEN 1 
+           WHEN 'high' THEN 2 
+           ELSE 3 END, 
+           discovered_at DESC
+           LIMIT 10
             """, {"days": days})
             
             scams = []
