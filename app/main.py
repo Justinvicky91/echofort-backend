@@ -60,7 +60,7 @@ def make_app():
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql"]:
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "005_hybrid_ai_system.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
@@ -138,7 +138,7 @@ app.include_router(invoice_generator.router)
         try:
             with psycopg.connect(dsn) as conn:
                 with conn.cursor() as cur:
-                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql"]:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "005_hybrid_ai_system.sql"]:
                         sql = (mdir / fname).read_text(encoding="utf-8")
                         cur.execute(sql)
                 conn.commit()
