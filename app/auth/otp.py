@@ -1,5 +1,6 @@
 # app/auth/otp.py
-from fastapi import APIRouter, HTTPException, Depends, Request
+# app/auth/otp.py  
+from fastapi import APIRouter, HTTPException, Depends, Request, Header
 from datetime import datetime, timedelta
 from sqlalchemy import text
 import random
