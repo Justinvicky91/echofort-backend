@@ -5,6 +5,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import create_engine, text
 from . import payment_gateway, ai_assistant, invoice_generator
+# NEW IMPORTS - Add after existing imports
+from .admin import payroll, profit_loss, infra_costs
+from . import websockets
 from pathlib import Path
 import os
 import psycopg
@@ -60,7 +63,7 @@ def make_app():
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "005_hybrid_ai_system.sql"]:
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "005_hybrid_ai_system.sql", "006_refresh_scam_timestamps.sql", "007_new_features.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
@@ -118,6 +121,12 @@ def make_app():
     app.include_router(test_endpoints.router)
     app.include_router(payment_gateway.router)
     app.include_router(ai_assistant.router)
+    # NEW ROUTERS - Add after existing include_router calls
+    app.include_router(payroll.router)
+    app.include_router(profit_loss.router)
+    app.include_router(infra_costs.router)
+    app.include_router(websockets.router)
+    # Note: ai_assistant.router already exists, just replace the file
     app.include_router(invoice_generator.router)
 
 
@@ -138,7 +147,7 @@ def make_app():
         try:
             with psycopg.connect(dsn) as conn:
                 with conn.cursor() as cur:
-                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "005_hybrid_ai_system.sql"]:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "005_hybrid_ai_system.sql", "006_refresh_scam_timestamps.sql", "007_new_features.sql"]:
                         sql = (mdir / fname).read_text(encoding="utf-8")
                         cur.execute(sql)
                 conn.commit()
