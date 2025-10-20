@@ -1,6 +1,7 @@
 # app/main.py
 from . import social, gps, screentime, family, subscription, test_endpoints
 from fastapi import FastAPI, Request, HTTPException
+from .admin import execute_sql
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import create_engine, text
