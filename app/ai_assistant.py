@@ -9,7 +9,7 @@ from sqlalchemy import text
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
-from ..rbac import guard_admin
+from .rbac import guard_admin  # CORRECT - Single dot
 import os
 
 router = APIRouter(prefix="/api/ai-assistant", tags=["AI Assistant"])
