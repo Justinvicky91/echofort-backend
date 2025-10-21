@@ -5,11 +5,9 @@ One-time use endpoint to create the Super Admin account
 
 from fastapi import APIRouter, HTTPException, Header, Request
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from datetime import datetime
 import os
-
 from sqlalchemy import text
 
 router = APIRouter()
@@ -28,9 +26,9 @@ class SuperAdminInit(BaseModel):
 
 @router.post("/initialize-super-admin")
 async def initialize_super_admin(
+    request: Request,
     init_data: SuperAdminInit,
-    authorization: str = Header(None),
-    request: Request
+    authorization: str = Header(None)
 ):
     """
     One-time endpoint to create the Super Admin account.
