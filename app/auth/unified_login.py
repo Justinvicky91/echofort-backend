@@ -11,6 +11,7 @@ from sqlalchemy import text
 from datetime import datetime, timedelta
 import random
 import hashlib
+import bcrypt
 from ..deps import get_settings
 from ..utils import jwt_encode
 from ..email_service import email_service
@@ -18,12 +19,16 @@ from ..email_service import email_service
 router = APIRouter(prefix="/auth/unified", tags=["auth"])
 
 def hash_password(password: str) -> str:
-    """Hash password using SHA-256"""
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Hash password using bcrypt"""
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(password: str, hashed: str) -> bool:
-    """Verify password against hash"""
-    return hash_password(password) == hashed
+    """Verify password against bcrypt hash"""
+    try:
+        return bcrypt.checkpw(password.encode(), hashed.encode())
+    except:
+        # Fallback to SHA-256 for legacy passwords
+        return hashlib.sha256(password.encode()).hexdigest() == hashed
 
 @router.post("/login/initiate")
 async def initiate_login(payload: dict, request: Request):
@@ -72,11 +77,11 @@ async def initiate_login(payload: dict, request: Request):
     
     else:
         # Username - check if employee or super admin
-        result = await db.fetch_one(text("""
+        result = (await db.execute(text("""
             SELECT id, username, role, password_hash, is_super_admin
             FROM employees
-            WHERE username = :u AND active = true
-        """), {"u": identifier})
+            WHERE username = :u AND (active = true OR active IS NULL)
+        """), {"u": identifier})).fetchone()
         
         if not result:
             raise HTTPException(404, "Username not found")
@@ -84,9 +89,9 @@ async def initiate_login(payload: dict, request: Request):
         if result['is_super_admin']:
             # Super Admin - send OTP + requires password
             # Get super admin email from users table
-            admin_user = await db.fetch_one(text("""
+            admin_user = (await db.execute(text("""
                 SELECT email FROM users WHERE id = :id
-            """), {"id": result['id']})
+            """), {"id": result['id']})).fetchone()
             
             if admin_user:
                 otp_code = str(random.randint(100000, 999999))
@@ -144,11 +149,11 @@ async def verify_login(payload: dict, request: Request):
             raise HTTPException(400, "OTP required")
         
         # Verify OTP
-        otp_record = await db.fetch_one(text("""
+        otp_record = (await db.execute(text("""
             SELECT * FROM otps
             WHERE identity = :i AND code = :c AND expires_at > NOW()
             ORDER BY created_at DESC LIMIT 1
-        """), {"i": identifier, "c": otp})
+        """), {"i": identifier, "c": otp})).fetchone()
         
         if not otp_record:
             raise HTTPException(401, "Invalid or expired OTP")
@@ -157,8 +162,8 @@ async def verify_login(payload: dict, request: Request):
         await db.execute(text("DELETE FROM otps WHERE identity = :i"), {"i": identifier})
         
         # Get or create user
-        user = await db.fetch_one(text("SELECT * FROM users WHERE email = :e OR phone = :p"), 
-                                   {"e": identifier, "p": identifier})
+        user = (await db.execute(text("SELECT * FROM users WHERE email = :e OR phone = :p"), 
+                                  {"e": identifier, "p": identifier})).fetchone()
         
         if not user:
             # Create new user
@@ -171,8 +176,8 @@ async def verify_login(payload: dict, request: Request):
                 "n": "User"
             })
             
-            user = await db.fetch_one(text("SELECT * FROM users WHERE email = :e OR phone = :p"), 
-                                       {"e": identifier, "p": identifier})
+            user = (await db.execute(text("SELECT * FROM users WHERE email = :e OR phone = :p"), 
+                                      {"e": identifier, "p": identifier})).fetchone()
         
         # Create session token
         token = jwt_encode({
@@ -195,9 +200,9 @@ async def verify_login(payload: dict, request: Request):
     
     else:
         # Employee or Super Admin login
-        employee = await db.fetch_one(text("""
-            SELECT * FROM employees WHERE username = :u AND active = true
-        """), {"u": identifier})
+        employee = (await db.execute(text("""
+            SELECT * FROM employees WHERE username = :u AND (active = true OR active IS NULL)
+        """), {"u": identifier})).fetchone()
         
         if not employee:
             raise HTTPException(404, "Username not found")
@@ -208,15 +213,15 @@ async def verify_login(payload: dict, request: Request):
                 raise HTTPException(400, "OTP and password required for super admin")
             
             # Verify OTP
-            admin_user = await db.fetch_one(text("SELECT email FROM users WHERE id = :id"), 
-                                             {"id": employee['user_id']})
+            admin_user = (await db.execute(text("SELECT email FROM users WHERE id = :id"), 
+                                            {"id": employee['user_id']})).fetchone()
             
             if admin_user:
-                otp_record = await db.fetch_one(text("""
+                otp_record = (await db.execute(text("""
                     SELECT * FROM otps
                     WHERE identity = :i AND code = :c AND expires_at > NOW()
                     ORDER BY created_at DESC LIMIT 1
-                """), {"i": admin_user['email'], "c": otp})
+                """), {"i": admin_user['email'], "c": otp})).fetchone()
                 
                 if not otp_record:
                     raise HTTPException(401, "Invalid or expired OTP")
@@ -285,7 +290,7 @@ async def verify_login(payload: dict, request: Request):
                     "username": employee['username'],
                     "role": employee['role'],
                     "user_type": "employee",
-                    "department": employee['department']
+                    "department": employee.get('department', '')
                 },
                 "redirect": role_redirects.get(employee['role'], "/admin/dashboard")
             }
@@ -307,9 +312,9 @@ async def setup_super_admin(payload: dict, request: Request):
     db = request.app.state.db
     
     # Check if super admin already exists
-    existing = await db.fetch_one(text("""
+    existing = (await db.execute(text("""
         SELECT id FROM employees WHERE is_super_admin = true
-    """))
+    """))).fetchone()
     
     if existing:
         raise HTTPException(403, "Super admin already exists")
@@ -320,7 +325,7 @@ async def setup_super_admin(payload: dict, request: Request):
         VALUES (:e, :n, NOW())
     """), {"e": email, "n": name})
     
-    user = await db.fetch_one(text("SELECT id FROM users WHERE email = :e"), {"e": email})
+    user = (await db.execute(text("SELECT id FROM users WHERE email = :e"), {"e": email})).fetchone()
     
     # Create employee record as super admin
     await db.execute(text("""
