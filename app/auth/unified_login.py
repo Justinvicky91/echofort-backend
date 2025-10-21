@@ -87,31 +87,12 @@ async def initiate_login(payload: dict, request: Request):
             raise HTTPException(404, "Username not found")
         
         if result['is_super_admin']:
-            # Super Admin - send OTP + requires password
-            # Get super admin email from users table
-            admin_user = (await db.execute(text("""
-                SELECT email FROM users WHERE id = :id
-            """), {"id": result['id']})).fetchone()
-            
-            if admin_user:
-                otp_code = str(random.randint(100000, 999999))
-                
-                await db.execute(text("""
-                    INSERT INTO otps(identity, code, expires_at, created_at)
-                    VALUES (:i, :c, :e, NOW())
-                """), {
-                    "i": admin_user['email'],
-                    "c": otp_code,
-                    "e": datetime.utcnow() + timedelta(minutes=5)
-                })
-                
-                email_service.send_otp(admin_user['email'], otp_code, "")
-            
+            # Super Admin - password only (no OTP for now)
             return {
                 "user_type": "super_admin",
-                "requires_otp": True,
+                "requires_otp": False,
                 "requires_password": True,
-                "message": "OTP sent to your registered email"
+                "message": "Enter your password"
             }
         
         else:
@@ -208,27 +189,9 @@ async def verify_login(payload: dict, request: Request):
             raise HTTPException(404, "Username not found")
         
         if employee['is_super_admin']:
-            # Super Admin - verify OTP + password
-            if not otp or not password:
-                raise HTTPException(400, "OTP and password required for super admin")
-            
-            # Verify OTP
-            admin_user = (await db.execute(text("SELECT email FROM users WHERE id = :id"), 
-                                            {"id": employee['user_id']})).fetchone()
-            
-            if admin_user:
-                otp_record = (await db.execute(text("""
-                    SELECT * FROM otps
-                    WHERE identity = :i AND code = :c AND expires_at > NOW()
-                    ORDER BY created_at DESC LIMIT 1
-                """), {"i": admin_user['email'], "c": otp})).fetchone()
-                
-                if not otp_record:
-                    raise HTTPException(401, "Invalid or expired OTP")
-                
-                # Delete used OTP
-                await db.execute(text("DELETE FROM otps WHERE identity = :i"), 
-                                  {"i": admin_user['email']})
+            # Super Admin - verify password only
+            if not password:
+                raise HTTPException(400, "Password required")
             
             # Verify password
             if not verify_password(password, employee['password_hash']):
@@ -236,7 +199,7 @@ async def verify_login(payload: dict, request: Request):
             
             # Create session token
             token = jwt_encode({
-                "sub": str(employee['user_id']),
+                "sub": str(employee['id']),
                 "employee_id": str(employee['id']),
                 "user_type": "super_admin",
                 "role": "super_admin",
@@ -247,7 +210,7 @@ async def verify_login(payload: dict, request: Request):
             return {
                 "token": token,
                 "user": {
-                    "id": employee['user_id'],
+                    "id": employee['id'],
                     "employee_id": employee['id'],
                     "username": employee['username'],
                     "role": "super_admin",
