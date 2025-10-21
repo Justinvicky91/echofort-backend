@@ -217,3 +217,7 @@ app.include_router(call_recording_vault.router)
 # Customer Exemptions (Super Admin)
 from .admin import customer_exemptions
 app.include_router(customer_exemptions.router)
+
+# Super Admin Initialization (One-time use)
+from .admin import initialize_super_admin
+app.include_router(initialize_super_admin.router, prefix="/auth", tags=["Super Admin Init"])
