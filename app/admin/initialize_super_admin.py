@@ -3,7 +3,7 @@ Super Admin Initialization Endpoint
 One-time use endpoint to create the Super Admin account
 """
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
