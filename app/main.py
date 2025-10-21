@@ -201,7 +201,7 @@ from . import auto_alert_v2
 app.include_router(auto_alert_v2.router)
 
 # Import unified auth and employee management
-from .auth import unified_login
+from .auth import unified_login, simple_login
 from .admin import employee_management as emp_mgmt
 
 # Register unified auth router
@@ -221,3 +221,4 @@ app.include_router(customer_exemptions.router)
 # Super Admin Initialization (One-time use)
 from .admin import initialize_super_admin
 app.include_router(initialize_super_admin.router, prefix="/auth", tags=["Super Admin Init"])
+app.include_router(simple_login.router)
