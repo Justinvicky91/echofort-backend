@@ -1,8 +1,6 @@
 import jwt, hashlib
 from .deps import get_settings
-from fastapi import HTTPException, Header
-from .deps import get_settings
-import jwt
+from fastapi import HTTPException, Header, Request
 
 def get_current_user(authorization: str = Header(None)):
     """Extract user from JWT token"""
@@ -40,3 +38,7 @@ def ai_cost_ok(monthly_so_far_rs: float, estimated_rs: float) -> bool:
 def is_admin(user_id: int) -> bool:
     s = get_settings()
     return str(user_id) in set(x.strip() for x in s.ADMIN_USER_IDS_CSV.split(","))
+
+def get_db(request: Request):
+    """Get database connection from app state"""
+    return request.app.state.db

@@ -8,7 +8,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
 import psycopg
-from .utils import get_current_user
+from .utils import get_current_user, get_db
 
 router = APIRouter()
 

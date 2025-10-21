@@ -254,7 +254,7 @@ COMPLAINANT INFORMATION:
 
 INCIDENT INFORMATION:
 - Type of Crime: {data['scam_type'].replace('_', ' ').title()}
-- Date of Incident: {data['incident_date')}
+- Date of Incident: {data['incident_date']}
 - Financial Loss: ${data.get('amount_lost', 0):,.2f}
 
 SUSPECT INFORMATION:
