@@ -35,9 +35,12 @@ async def simple_login(payload: dict, request: Request):
         if not result:
             raise HTTPException(401, "Invalid username or password")
         
+        # Unpack tuple result
+        emp_id, emp_username, password_hash, emp_role, is_super, dept = result
+        
         # Verify password with bcrypt
         try:
-            password_match = bcrypt.checkpw(password.encode(), result['password_hash'].encode())
+            password_match = bcrypt.checkpw(password.encode(), password_hash.encode())
         except Exception as e:
             raise HTTPException(401, f"Password verification failed: {str(e)}")
         
@@ -46,10 +49,10 @@ async def simple_login(payload: dict, request: Request):
         
         # Create token
         token = jwt_encode({
-            "sub": str(result['id']),
-            "employee_id": str(result['id']),
-            "user_type": "super_admin" if result['is_super_admin'] else "employee",
-            "role": result['role'],
+            "sub": str(emp_id),
+            "employee_id": str(emp_id),
+            "user_type": "super_admin" if is_super else "employee",
+            "role": emp_role,
             "exp": (datetime.utcnow() + timedelta(hours=8)).timestamp()
         })
         
@@ -57,11 +60,11 @@ async def simple_login(payload: dict, request: Request):
             "success": True,
             "token": token,
             "user": {
-                "id": result['id'],
-                "username": result['username'],
-                "role": result['role'],
-                "is_super_admin": result['is_super_admin'],
-                "department": result['department']
+                "id": emp_id,
+                "username": emp_username,
+                "role": emp_role,
+                "is_super_admin": is_super,
+                "department": dept
             },
             "redirect": "/admin/dashboard"
         }
