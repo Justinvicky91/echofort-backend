@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, text
 from . import payment_gateway, ai_assistant, invoice_generator, ai_assistant_enhanced
 # NEW IMPORTS - Add after existing imports
 from .admin import payroll, profit_loss, infra_costs
-from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, live_alerts
+from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports
 from pathlib import Path
 import os
 import psycopg
@@ -138,6 +138,10 @@ def make_app():
     app.include_router(auto_alert.router)
     app.include_router(kyc_verification.router)
     app.include_router(live_alerts.router)
+    app.include_router(subscription_enhanced.router)
+    app.include_router(voice_biometric.router)
+    app.include_router(scam_prediction.router)
+    app.include_router(community_reports.router)
 
 
 
