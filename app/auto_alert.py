@@ -417,24 +417,33 @@ async def approve_alert(request: Request, payload: AlertApproval, current_user: 
         if payload.modifications:
             body = payload.modifications
         
-        # In production, send email using email service
-        # For now, mark as sent
+        # Mark as approved (user will send manually from their email)
         await db.execute(text("""
             UPDATE auto_alerts
-            SET status = 'sent', user_confirmed = TRUE, sent_at = NOW(), body = :body
+            SET status = 'approved', user_confirmed = TRUE, approved_at = NOW(), body = :body
             WHERE id = :aid
         """), {"aid": payload.alert_id, "body": body})
         
-        # Log the action
-        print(f"Alert email sent to {alert[1]}")
-        print(f"Subject: {alert[2]}")
+        # Get user email for "From" address
+        user_email = current_user.get('email', 'your-email@example.com')
         
         return {
             "ok": True,
-            "status": "sent",
+            "status": "approved",
             "alert_id": payload.alert_id,
-            "message": "Alert email sent successfully to authorities",
-            "sent_to": alert[1],
+            "message": "Email draft approved. Please copy and send from your email.",
+            "email_draft": {
+                "from": user_email,
+                "to": alert[1],
+                "subject": alert[2],
+                "body": body
+            },
+            "instructions": [
+                "1. Open your email client (Gmail, Outlook, etc.)",
+                "2. Copy the email content below",
+                "3. Send to: " + alert[1],
+                "4. Mark as sent in the app after sending"
+            ],
             "next_steps": [
                 "Save the confirmation for your records",
                 "Note down the report ID for future reference",
@@ -530,4 +539,45 @@ async def get_alert_details(request: Request, alert_id: int, current_user: dict 
         raise
     except Exception as e:
         raise HTTPException(500, f"Error fetching alert: {str(e)}")
+
+@router.post("/mark-sent")
+async def mark_alert_sent(request: Request, alert_id: int, current_user: dict = Depends(get_current_user)):
+    """
+    Mark alert as sent after user manually sends email from their email client
+    """
+    try:
+        user_id = current_user["id"]
+        db = request.app.state.db
+        
+        # Verify ownership
+        alert = (await db.execute(text("""
+            SELECT user_id, status FROM auto_alerts WHERE id = :aid
+        """), {"aid": alert_id})).fetchone()
+        
+        if not alert:
+            raise HTTPException(404, "Alert not found")
+        
+        if alert[0] != user_id:
+            raise HTTPException(403, "Unauthorized")
+        
+        if alert[1] != "approved":
+            raise HTTPException(400, "Alert must be approved first")
+        
+        # Mark as sent
+        await db.execute(text("""
+            UPDATE auto_alerts
+            SET status = 'sent', sent_at = NOW()
+            WHERE id = :aid
+        """), {"aid": alert_id})
+        
+        return {
+            "ok": True,
+            "message": "Alert marked as sent successfully",
+            "alert_id": alert_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Error: {str(e)}")
 
