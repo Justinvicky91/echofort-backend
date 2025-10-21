@@ -1,7 +1,7 @@
 # app/subscription_enhanced.py - Enhanced Subscription Management
 """
 Enhanced Subscription Management
-- Auto-charge after 48-hour trial
+- Auto-charge after 24-hour trial
 - Recurring monthly billing
 - Razorpay/Stripe subscription integration
 - Email verification requirement
@@ -17,11 +17,11 @@ import os
 
 router = APIRouter(prefix="/api/subscription", tags=["Subscription Enhanced"])
 
-# Subscription pricing (excluding GST)
+# Subscription pricing (including GST)
 SUBSCRIPTION_PLANS = {
     "basic": {
         "name": "Basic Protection",
-        "price": 349,
+        "price": 399,
         "currency": "INR",
         "features": ["1 member", "Basic scam protection", "No call recording", "No dashboard"],
         "device_limit": 1
@@ -35,7 +35,7 @@ SUBSCRIPTION_PLANS = {
     },
     "family": {
         "name": "Family Pack",
-        "price": 1299,
+        "price": 1499,
         "currency": "INR",
         "features": ["3 members", "All features", "Call recording", "Full dashboard access", "Family management"],
         "device_limit": 4
@@ -75,7 +75,7 @@ async def check_trial_expiry(user_id: int, db) -> dict:
         return {"trial_active": False, "trial_expired": False, "hours_remaining": 0}
     
     trial_start = user[0]
-    trial_end_time = trial_start + timedelta(hours=48)
+    trial_end_time = trial_start + timedelta(hours=24)
     now = datetime.now()
     
     if user[2] == "active":
@@ -138,8 +138,8 @@ async def get_subscription_plans():
         "ok": True,
         "plans": SUBSCRIPTION_PLANS,
         "currency": "INR",
-        "note": "Prices exclude GST (18%)",
-        "trial_period": "48 hours free trial"
+        "note": "Prices include GST",
+        "trial_period": "24 hours free trial"
     }
 
 
