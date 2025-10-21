@@ -13,8 +13,18 @@ from openai import OpenAI
 
 router = APIRouter(prefix="/api/ai/voice", tags=["Voice AI"])
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Lazy OpenAI client initialization
+_client = None
+
+def get_openai_client():
+    """Lazy load OpenAI client"""
+    global _client
+    if _client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "OpenAI API key not configured")
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 # Scam keywords database
 SCAM_KEYWORDS = {
@@ -122,7 +132,7 @@ async def analyze_voice(file: UploadFile = File(...)):
         try:
             # Transcribe using OpenAI Whisper
             with open(temp_audio_path, "rb") as audio_file:
-                transcript_response = client.audio.transcriptions.create(
+                transcript_response = get_openai_client().audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     language="en"  # Can be auto-detected or set to "hi" for Hindi
@@ -205,7 +215,7 @@ async def transcribe_audio(file: UploadFile = File(...), language: Optional[str]
         try:
             # Transcribe using OpenAI Whisper
             with open(temp_audio_path, "rb") as audio_file:
-                transcript_response = client.audio.transcriptions.create(
+                transcript_response = get_openai_client().audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     language=language if language else None

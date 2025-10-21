@@ -16,8 +16,18 @@ from openai import OpenAI
 
 router = APIRouter(prefix="/api/ai-assistant", tags=["AI Assistant"])
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Lazy OpenAI client initialization (only when needed)
+_client = None
+
+def get_openai_client():
+    """Lazy load OpenAI client to avoid startup crashes"""
+    global _client
+    if _client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.")
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 class AICommand(BaseModel):
     admin_key: str
@@ -163,7 +173,7 @@ Remember: You are the autonomous brain of EchoFort. Think strategically and act 
     
     try:
         # Call OpenAI GPT-4
-        response = client.chat.completions.create(
+        response = get_openai_client().chat.completions.create(
             model="gpt-4",
             messages=messages,
             temperature=0.7,

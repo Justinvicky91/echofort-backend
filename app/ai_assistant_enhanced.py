@@ -18,8 +18,18 @@ from openai import OpenAI
 
 router = APIRouter(prefix="/api/echofort-ai", tags=["EchoFort AI"])
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Lazy OpenAI client initialization
+_client = None
+
+def get_openai_client():
+    """Lazy load OpenAI client"""
+    global _client
+    if _client is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(500, "OpenAI API key not configured")
+        _client = OpenAI(api_key=api_key)
+    return _client
 
 # ============================================================================
 # MODELS
@@ -148,7 +158,7 @@ Analyze the command and respond in JSON format:
 If the command is unclear or dangerous, set "requires_approval": true and explain concerns in "preview"."""
 
     try:
-        response = client.chat.completions.create(
+        response = get_openai_client().chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": system_prompt},
