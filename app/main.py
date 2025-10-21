@@ -64,7 +64,7 @@ def make_app():
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "014_employees_table.sql"]:
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "014_employees_table.sql", "015_vault_and_exemptions.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
@@ -161,7 +161,7 @@ def make_app():
         try:
             with psycopg.connect(dsn) as conn:
                 with conn.cursor() as cur:
-                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "014_employees_table.sql"]:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "014_employees_table.sql", "015_vault_and_exemptions.sql"]:
                         sql = (mdir / fname).read_text(encoding="utf-8")
                         cur.execute(sql)
                 conn.commit()
@@ -209,3 +209,11 @@ app.include_router(unified_login.router)
 
 # Register employee management router
 app.include_router(emp_mgmt.router)
+
+# Call Recording Vault (Super Admin)
+from .admin import call_recording_vault
+app.include_router(call_recording_vault.router)
+
+# Customer Exemptions (Super Admin)
+from .admin import customer_exemptions
+app.include_router(customer_exemptions.router)
