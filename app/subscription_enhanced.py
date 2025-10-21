@@ -37,7 +37,7 @@ SUBSCRIPTION_PLANS = {
         "name": "Family Pack",
         "price": 1499,
         "currency": "INR",
-        "features": ["3 members", "All features", "Call recording", "Full dashboard access", "Family management"],
+        "features": ["4 members", "All features", "Call recording", "Full dashboard access", "Family management"],
         "device_limit": 4
     }
 }
