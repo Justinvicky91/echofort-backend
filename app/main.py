@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import create_engine, text
 from . import payment_gateway, ai_assistant, invoice_generator, ai_assistant_enhanced, ai_assistant_enhanced_v2, ai_assistant_intelligent, public_content
+from .admin import employee_exemptions
 # NEW IMPORTS - Add after existing imports
 from .admin import payroll, profit_loss, infra_costs
 from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports
@@ -126,6 +127,7 @@ def make_app():
     app.include_router(ai_assistant_enhanced_v2.router)
     app.include_router(ai_assistant_intelligent.router)
     app.include_router(public_content.router)
+    app.include_router(employee_exemptions.router)
     # NEW ROUTERS - Add after existing include_router calls
     app.include_router(payroll.router)
     app.include_router(profit_loss.router)
