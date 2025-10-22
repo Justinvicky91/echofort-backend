@@ -219,6 +219,7 @@ from .admin import customer_exemptions
 app.include_router(customer_exemptions.router)
 
 # Super Admin Initialization (One-time use)
-from .admin import initialize_super_admin
+from .admin import initialize_super_admin, dashboard_stats
 app.include_router(initialize_super_admin.router, prefix="/auth", tags=["Super Admin Init"])
 app.include_router(simple_login.router)
+app.include_router(dashboard_stats.router)
