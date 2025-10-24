@@ -180,35 +180,42 @@ def find_auto_response(subject: str, body: str) -> Optional[str]:
     return None
 
 
-async def send_email_via_resend(to_email: str, subject: str, body: str, request: Request):
-    """Send email using Resend API"""
+async def send_email_via_sendgrid(to_email: str, subject: str, body: str, request: Request):
+    """Send email using SendGrid API"""
     try:
         import httpx
         import os
         
-        resend_api_key = os.getenv("RESEND_API_KEY")
-        if not resend_api_key:
-            logger.error("RESEND_API_KEY not configured")
+        sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
+        if not sendgrid_api_key:
+            logger.error("SENDGRID_API_KEY not configured")
             return False
+        
+        from_email = os.getenv("HELLO_EMAIL", "noreply@echofort.ai")
         
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://api.resend.com/emails",
+                "https://api.sendgrid.com/v3/mail/send",
                 headers={
-                    "Authorization": f"Bearer {resend_api_key}",
+                    "Authorization": f"Bearer {sendgrid_api_key}",
                     "Content-Type": "application/json"
                 },
                 json={
-                    "from": "noreply@echofort.ai",
-                    "to": to_email,
-                    "subject": subject,
-                    "text": body,
-                    "reply_to": "support@echofort.ai"
+                    "personalizations": [{
+                        "to": [{"email": to_email}],
+                        "subject": subject
+                    }],
+                    "from": {"email": from_email, "name": "EchoFort Support"},
+                    "reply_to": {"email": "support@echofort.ai", "name": "EchoFort Support"},
+                    "content": [{
+                        "type": "text/plain",
+                        "value": body
+                    }]
                 },
                 timeout=10.0
             )
             
-            if response.status_code == 200:
+            if response.status_code == 202:
                 logger.info(f"Email sent successfully to {to_email}")
                 return True
             else:
@@ -300,7 +307,7 @@ async def receive_email_webhook(payload: dict, request: Request):
         
         if auto_response:
             # Send auto-response
-            await send_email_via_resend(
+            await send_email_via_sendgrid(
                 to_email=from_email,
                 subject=f"Re: {subject}",
                 body=auto_response,
@@ -352,7 +359,7 @@ Status: Open
 Priority: {priority.capitalize()}
 """
             
-            await send_email_via_resend(
+            await send_email_via_sendgrid(
                 to_email=from_email,
                 subject=f"[Ticket #{ticket_id}] {subject}",
                 body=acknowledgment,
