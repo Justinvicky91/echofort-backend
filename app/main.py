@@ -147,7 +147,7 @@ def make_app():
     app.include_router(voice_biometric.router)
     app.include_router(scam_prediction.router)
     app.include_router(community_reports.router)
-    app.include_router(email_webhook_v2 as email_webhook.router)
+    app.include_router(email_webhook.router)
 
 
 
