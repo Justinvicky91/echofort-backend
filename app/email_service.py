@@ -1,15 +1,18 @@
 # app/email_service.py
 import os
 import requests
+import httpx
+import asyncio
 
 class EmailService:
     def __init__(self):
         self.sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
+        self.makecom_otp_webhook = os.getenv("MAKECOM_OTP_WEBHOOK_URL")
         self.from_email = os.getenv("SMTP_FROM", "noreply@echofort.ai")
         self.support_email = os.getenv("SUPPORT_EMAIL", "support@echofort.ai")
     
     def send_otp(self, to_email: str, otp_code: str, phone: str = ""):
-        """Send OTP via SendGrid"""
+        """Send OTP via Make.com webhook (Gmail)"""
         subject = "Your EchoFort OTP Code"
         
         html = f"""<!DOCTYPE html>
@@ -45,10 +48,14 @@ class EmailService:
 </table></td></tr></table>
 </body></html>"""
         
-        return self._send_via_sendgrid(to_email, subject, html)
+        # Try Make.com first, fallback to SendGrid
+        if self.makecom_otp_webhook:
+            return self._send_via_makecom(to_email, subject, html)
+        else:
+            return self._send_via_sendgrid(to_email, subject, html)
     
     def send_welcome_email(self, to_email: str, name: str):
-        """Send welcome email via SendGrid"""
+        """Send welcome email via Make.com webhook (Gmail)"""
         subject = "Welcome to EchoFort! 🎉"
         
         html = f"""<!DOCTYPE html>
@@ -87,10 +94,48 @@ class EmailService:
 </table></td></tr></table>
 </body></html>"""
         
-        return self._send_via_sendgrid(to_email, subject, html)
+        # Try Make.com first, fallback to SendGrid
+        if self.makecom_otp_webhook:
+            return self._send_via_makecom(to_email, subject, html)
+        else:
+            return self._send_via_sendgrid(to_email, subject, html)
+    
+    def _send_via_makecom(self, to_email: str, subject: str, html_body: str):
+        """Send email using Make.com webhook (Gmail)"""
+        if not self.makecom_otp_webhook:
+            print("❌ MAKECOM_OTP_WEBHOOK_URL not configured")
+            return False
+        
+        try:
+            # Use synchronous requests for compatibility
+            data = {
+                "to": to_email,
+                "from": self.from_email,
+                "fromName": "EchoFort",
+                "subject": subject,
+                "body": html_body,
+                "isReply": False
+            }
+            
+            response = requests.post(
+                self.makecom_otp_webhook,
+                json=data,
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                print(f"✅ OTP email sent via Make.com to {to_email}")
+                return True
+            else:
+                print(f"❌ Make.com webhook error: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Make.com email sending failed: {str(e)}")
+            return False
     
     def _send_via_sendgrid(self, to_email: str, subject: str, html_body: str):
-        """Send email using SendGrid API"""
+        """Send email using SendGrid API (fallback)"""
         if not self.sendgrid_api_key:
             print("❌ SENDGRID_API_KEY not configured")
             return False
@@ -132,3 +177,4 @@ class EmailService:
 
 # Global instance
 email_service = EmailService()
+
