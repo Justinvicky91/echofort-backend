@@ -234,3 +234,7 @@ app.include_router(service_integrations.router)
 # Support Ticket Management (Employee Dashboard)
 from . import support_management
 app.include_router(support_management.router)
+
+# WhatsApp Support Integration
+from . import whatsapp_support
+app.include_router(whatsapp_support.router)
