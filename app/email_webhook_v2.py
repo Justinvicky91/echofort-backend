@@ -216,11 +216,11 @@ async def receive_email_webhook(
         # Insert ticket
         ticket_query = text("""
             INSERT INTO support_tickets (
-                from_email, from_name, subject, message_plain, message_html,
+                customer_email, customer_name, subject, message, 
                 email_message_id, source, status, priority, auto_response_sent, created_at
             )
             VALUES (
-                :from_email, :from_name, :subject, :message_plain, :message_html,
+                :customer_email, :customer_name, :subject, :message, 
                 :message_id, 'email', 'open', 'medium', FALSE, NOW()
             )
             RETURNING id
@@ -229,11 +229,10 @@ async def receive_email_webhook(
         result = await db.execute(
             ticket_query,
             {
-                "from_email": from_email,
-                "from_name": fromName or from_email.split("@")[0],
+                "customer_email": from_email,
+                "customer_name": fromName or from_email.split("@")[0],
                 "subject": subject,
-                "message_plain": message_content[:5000],  # Limit to 5000 chars
-                "message_html": textHtml[:10000] if textHtml else None,
+                "message": message_content[:5000],  # Limit to 5000 chars
                 "message_id": messageId
             }
         )
