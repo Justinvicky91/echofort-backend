@@ -210,67 +210,65 @@ async def receive_email_webhook(
         # Get message content (prefer plain text)
         message_content = textPlain or textHtml or ""
         
-        # Get database connection from request
-        db = request.app.state.db_pool
+        # Get database connection from request (using DBShim from main.py)
+        db = request.app.state.db
         
-        # Create support ticket
-        async with db.acquire() as conn:
-            # Insert ticket
-            ticket_query = text("""
-                INSERT INTO support_tickets (
-                    from_email, from_name, subject, message_plain, message_html,
-                    email_message_id, source, status, priority, auto_response_sent, created_at
-                )
-                VALUES (
-                    :from_email, :from_name, :subject, :message_plain, :message_html,
-                    :message_id, 'email', 'open', 'medium', FALSE, NOW()
-                )
-                RETURNING id
-            """)
-            
-            result = await conn.execute(
-                ticket_query,
-                {
-                    "from_email": from_email,
-                    "from_name": fromName or from_email.split("@")[0],
-                    "subject": subject,
-                    "message_plain": message_content[:5000],  # Limit to 5000 chars
-                    "message_html": textHtml[:10000] if textHtml else None,
-                    "message_id": messageId
-                }
+        # Insert ticket
+        ticket_query = text("""
+            INSERT INTO support_tickets (
+                from_email, from_name, subject, message_plain, message_html,
+                email_message_id, source, status, priority, auto_response_sent, created_at
+            )
+            VALUES (
+                :from_email, :from_name, :subject, :message_plain, :message_html,
+                :message_id, 'email', 'open', 'medium', FALSE, NOW()
+            )
+            RETURNING id
+        """)
+        
+        result = await db.execute(
+            ticket_query,
+            {
+                "from_email": from_email,
+                "from_name": fromName or from_email.split("@")[0],
+                "subject": subject,
+                "message_plain": message_content[:5000],  # Limit to 5000 chars
+                "message_html": textHtml[:10000] if textHtml else None,
+                "message_id": messageId
+            }
+        )
+        
+        ticket_id = result.scalar()
+        logger.info(f"Created support ticket #{ticket_id}")
+        
+        # Check for auto-response
+        auto_response = detect_auto_response(subject, message_content)
+        
+        if auto_response:
+            # Send auto-response
+            email_sent = await send_email_via_sendgrid(
+                to_email=from_email,
+                subject=subject,
+                body=auto_response
             )
             
-            ticket_id = (await result.fetchone())[0]
-            logger.info(f"Created support ticket #{ticket_id}")
-            
-            # Check for auto-response
-            auto_response = detect_auto_response(subject, message_content)
-            
-            if auto_response:
-                # Send auto-response
-                email_sent = await send_email_via_sendgrid(
-                    to_email=from_email,
-                    subject=subject,
-                    body=auto_response
+            if email_sent:
+                # Mark ticket as auto-responded
+                await db.execute(
+                    text("UPDATE support_tickets SET auto_response_sent = TRUE WHERE id = :id"),
+                    {"id": ticket_id}
                 )
                 
-                if email_sent:
-                    # Mark ticket as auto-responded
-                    await conn.execute(
-                        text("UPDATE support_tickets SET auto_response_sent = TRUE WHERE id = :id"),
-                        {"id": ticket_id}
-                    )
-                    
-                    # Add response to conversation
-                    await conn.execute(
-                        text("""
-                            INSERT INTO ticket_responses (ticket_id, from_type, from_name, message, created_at)
-                            VALUES (:ticket_id, 'system', 'EchoFort Auto-Response', :message, NOW())
-                        """),
-                        {"ticket_id": ticket_id, "message": auto_response}
-                    )
-                    
-                    logger.info(f"Auto-response sent for ticket #{ticket_id}")
+                # Add response to conversation
+                await db.execute(
+                    text("""
+                        INSERT INTO ticket_responses (ticket_id, from_type, from_name, message, created_at)
+                        VALUES (:ticket_id, 'system', 'EchoFort Auto-Response', :message, NOW())
+                    """),
+                    {"ticket_id": ticket_id, "message": auto_response}
+                )
+                
+                logger.info(f"Auto-response sent for ticket #{ticket_id}")
         
         return {
             "ok": True,
