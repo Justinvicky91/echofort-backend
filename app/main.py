@@ -230,3 +230,7 @@ app.include_router(initialize_super_admin.router, prefix="/auth", tags=["Super A
 app.include_router(simple_login.router)
 app.include_router(dashboard_stats.router)
 app.include_router(service_integrations.router)
+
+# Support Ticket Management (Employee Dashboard)
+from . import support_management
+app.include_router(support_management.router)
