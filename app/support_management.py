@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import text
 import logging
 import os
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -35,47 +36,41 @@ class AddNote(BaseModel):
     note: str
 
 
-# Helper function to send email via SendGrid
-async def send_email_to_customer(to_email: str, subject: str, message: str, from_email: str = "support@echofort.ai"):
-    """Send email to customer using SendGrid"""
-    from sendgrid import SendGridAPIClient
-    from sendgrid.helpers.mail import Mail
-    
+# Helper function to send email via Make.com (Gmail)
+async def send_email_via_makecom(to_email: str, to_name: str, subject: str, message: str):
+    """Send email to customer using Make.com webhook (Gmail)"""
     try:
-        email_message = Mail(
-            from_email=from_email,
-            to_emails=to_email,
-            subject=f"Re: {subject}",
-            html_content=f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
-                    <h1 style="color: white; margin: 0;">EchoFort Support</h1>
-                </div>
-                <div style="padding: 30px; background: #f9fafb;">
-                    <p style="color: #374151; line-height: 1.6; white-space: pre-wrap;">{message}</p>
-                    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-                    <p style="color: #6b7280; font-size: 14px;">
-                        Best regards,<br>
-                        EchoFort Support Team<br>
-                        <a href="https://echofort.ai" style="color: #667eea;">echofort.ai</a>
-                    </p>
-                </div>
-                <div style="background: #1f2937; padding: 20px; text-align: center;">
-                    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-                        © 2025 EchoFort. All rights reserved.
-                    </p>
-                </div>
-            </div>
-            """
-        )
+        # Make.com webhook URL for sending emails
+        makecom_webhook_url = os.getenv("MAKECOM_SEND_EMAIL_WEBHOOK_URL", "")
         
-        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
-        response = sg.send(email_message)
+        if not makecom_webhook_url:
+            logger.error("MAKECOM_SEND_EMAIL_WEBHOOK_URL not configured")
+            return False
         
-        logger.info(f"Email sent to {to_email}. Status: {response.status_code}")
-        return response.status_code in [200, 202]
+        # Prepare email data for Make.com
+        email_data = {
+            "to": to_email,
+            "toName": to_name,
+            "from": "support@echofort.ai",
+            "fromName": "EchoFort Support",
+            "subject": f"Re: {subject}",
+            "body": message,
+            "isReply": True
+        }
+        
+        # Send to Make.com webhook
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(makecom_webhook_url, json=email_data)
+            
+            if response.status_code in [200, 202]:
+                logger.info(f"Email sent to {to_email} via Make.com. Status: {response.status_code}")
+                return True
+            else:
+                logger.error(f"Make.com webhook failed. Status: {response.status_code}, Response: {response.text}")
+                return False
+                
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {e}")
+        logger.error(f"Failed to send email via Make.com to {to_email}: {e}")
         return False
 
 
@@ -99,7 +94,6 @@ async def get_support_stats(request: Request):
         resolved_today = (await db.execute(resolved_today_query)).scalar() or 0
         
         # Calculate average response time (in minutes)
-        # This is a simplified calculation - you can make it more sophisticated
         avg_response_query = text("""
             SELECT AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 60) 
             FROM support_tickets 
@@ -108,11 +102,7 @@ async def get_support_stats(request: Request):
         """)
         avg_response_time = (await db.execute(avg_response_query)).scalar() or 0
         
-        # Get total tickets for satisfaction calculation
-        total_resolved_query = text("SELECT COUNT(*) FROM support_tickets WHERE status = 'resolved'")
-        total_resolved = (await db.execute(total_resolved_query)).scalar() or 1
-        
-        # Simplified satisfaction score (you can implement actual customer feedback later)
+        # Simplified satisfaction score
         satisfaction_score = min(95, 80 + (resolved_today * 2))
         
         return {
@@ -248,7 +238,7 @@ async def get_ticket_conversation(ticket_id: int, request: Request):
 # 4. POST /admin/support/ticket/{ticket_id}/reply - Send Reply to Customer
 @router.post("/ticket/{ticket_id}/reply")
 async def reply_to_ticket(ticket_id: int, reply: ReplyRequest, request: Request):
-    """Send reply to customer and save to database"""
+    """Send reply to customer via Make.com (Gmail) and save to database"""
     try:
         db = request.app.state.db
         
@@ -295,17 +285,18 @@ async def reply_to_ticket(ticket_id: int, reply: ReplyRequest, request: Request)
             """)
             await db.execute(update_status_query, {"ticket_id": ticket_id})
         
-        # Send email to customer
-        email_sent = await send_email_to_customer(
+        # Send email to customer via Make.com (Gmail)
+        email_sent = await send_email_via_makecom(
             to_email=customer_email,
+            to_name=customer_name or "Customer",
             subject=subject,
             message=reply.message
         )
         
         if email_sent:
-            logger.info(f"Reply email sent to {customer_email}")
+            logger.info(f"Reply email sent to {customer_email} via Make.com (Gmail)")
         else:
-            logger.warning(f"Failed to send reply email to {customer_email}, but reply saved to database")
+            logger.warning(f"Failed to send reply email to {customer_email} via Make.com, but reply saved to database")
         
         return {
             "ok": True,
