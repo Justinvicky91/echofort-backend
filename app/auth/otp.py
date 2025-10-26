@@ -18,10 +18,30 @@ async def request_otp(payload: dict, request: Request, settings=Depends(get_sett
     if not email:
         raise HTTPException(400, "Email required")
     
+    db = request.app.state.db
+    
+    # Check if OTP was sent in the last 60 seconds (resend cooldown)
+    last_otp = (await db.execute(text("""
+        SELECT created_at FROM otps 
+        WHERE identity = :i 
+        ORDER BY created_at DESC LIMIT 1
+    """), {"i": email})).fetchone()
+    
+    if last_otp:
+        time_since_last = (datetime.utcnow() - last_otp.created_at).total_seconds()
+        if time_since_last < 60:
+            remaining = int(60 - time_since_last)
+            raise HTTPException(429, f"Please wait {remaining} seconds before requesting a new OTP")
+    
+    # Invalidate all previous OTPs for this email
+    await db.execute(text("""
+        DELETE FROM otps WHERE identity = :i
+    """), {"i": email})
+    
     # Generate random 6-digit OTP
     otp_code = str(random.randint(100000, 999999))
     
-    db = request.app.state.db
+    # Insert new OTP
     await db.execute(text("""
         INSERT INTO otps(identity, code, expires_at, created_at)
         VALUES (:i, :c, :e, NOW())
