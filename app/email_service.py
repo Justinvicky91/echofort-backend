@@ -28,10 +28,16 @@ class EmailService:
             msg.attach(MIMEText(html_body, 'html'))
             
             # Connect to SMTP server and send
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()  # Enable TLS encryption
-                server.login(self.smtp_username, self.smtp_password)
-                server.send_message(msg)
+            # Try SSL first (port 465), fallback to STARTTLS (port 587)
+            if self.smtp_port == 465:
+                with smtplib.SMTP_SSL(self.smtp_server, self.smtp_port) as server:
+                    server.login(self.smtp_username, self.smtp_password)
+                    server.send_message(msg)
+            else:
+                with smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30) as server:
+                    server.starttls()  # Enable TLS encryption
+                    server.login(self.smtp_username, self.smtp_password)
+                    server.send_message(msg)
             
             print(f"✅ Email sent successfully to {to_email}")
             return True
