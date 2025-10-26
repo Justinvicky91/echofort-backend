@@ -1,6 +1,7 @@
 # app/deps.py
 from functools import lru_cache
 from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     APP_ENV: str = "dev"
@@ -34,6 +35,21 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     APP_BOOT_MODE: str = "bare"  # bare/full toggle
+
+    @field_validator('DATABASE_URL')
+    @classmethod
+    def fix_database_url(cls, v: str) -> str:
+        """Fix DATABASE_URL if it has the wrong password due to Railway UI bug"""
+        # Known wrong password from Railway UI
+        wrong_password = "cMoeoOlFKQRosoMfIMetyZqASli1JOHsm"
+        # Correct password from Postgres service
+        correct_password = "cMoeoOlFKQRosoMfIMetyZqASl1JlOHsm"
+        
+        # Replace wrong password with correct one if found
+        if wrong_password in v:
+            v = v.replace(wrong_password, correct_password)
+        
+        return v
 
     class Config:
         env_file = ".env"   # load local overrides if present
