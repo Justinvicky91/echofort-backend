@@ -128,6 +128,7 @@ def make_app():
     app.include_router(ai_assistant_enhanced_v2.router)
     app.include_router(ai_assistant_intelligent.router)
     app.include_router(public_content.router)
+    app.include_router(public_content.router_public)  # Legacy /public routes for frontend
     app.include_router(employee_exemptions.router)
     # NEW ROUTERS - Add after existing include_router calls
     app.include_router(payroll.router)

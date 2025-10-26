@@ -8,6 +8,9 @@ import random
 
 router = APIRouter(prefix="/api/public", tags=["Public Content"])
 
+# Second router without /api prefix for frontend compatibility
+router_public = APIRouter(prefix="/public", tags=["Public Content - Legacy"])
+
 def get_db_connection():
     """Get database connection"""
     return psycopg.connect(os.getenv("DATABASE_URL"))
@@ -301,6 +304,17 @@ def calculate_time_ago(reported_at: datetime) -> str:
         return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
     else:
         return "Just now"
+
+# Legacy routes for frontend compatibility (without /api prefix)
+@router_public.get("/youtube-videos")
+async def get_youtube_videos_legacy():
+    """Legacy endpoint: /public/youtube-videos - Frontend compatibility"""
+    return await get_all_videos()
+
+@router_public.get("/scam-alerts")
+async def get_scam_alerts_legacy():
+    """Legacy endpoint: /public/scam-alerts - Frontend compatibility"""
+    return await get_live_scam_alerts()
 
 @router.get("/stats")
 async def get_public_stats():

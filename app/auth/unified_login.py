@@ -14,7 +14,7 @@ import hashlib
 import bcrypt
 from ..deps import get_settings
 from ..utils import jwt_encode
-from ..email_service import email_service
+from ..email_service_sendgrid import send_otp_email
 
 router = APIRouter(prefix="/auth/unified", tags=["auth"])
 
@@ -84,8 +84,17 @@ async def initiate_login(payload: dict, request: Request):
             "e": datetime.utcnow() + timedelta(minutes=5)
         })
         
-        # Send OTP
-        email_service.send_otp(identifier, otp_code, "")
+        # Send OTP via SendGrid
+        try:
+            success = send_otp_email(identifier, otp_code)
+            if not success:
+                # Rollback OTP creation if email fails
+                await db.execute(text("DELETE FROM otps WHERE identity = :i AND code = :c"), {"i": identifier, "c": otp_code})
+                raise HTTPException(503, "Failed to send OTP email. Please try again.")
+        except Exception as e:
+            # Rollback OTP creation if email fails
+            await db.execute(text("DELETE FROM otps WHERE identity = :i AND code = :c"), {"i": identifier, "c": otp_code})
+            raise HTTPException(503, f"Failed to send OTP email: {str(e)}")
         
         return {
             "user_type": "customer",
