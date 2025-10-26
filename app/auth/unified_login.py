@@ -54,6 +54,25 @@ async def initiate_login(payload: dict, request: Request):
     
     if is_email_or_phone:
         # Customer login - send OTP
+        
+        # Check if OTP was sent in the last 60 seconds (resend cooldown)
+        last_otp = (await db.execute(text("""
+            SELECT created_at FROM otps 
+            WHERE identity = :i 
+            ORDER BY created_at DESC LIMIT 1
+        """), {"i": identifier})).fetchone()
+        
+        if last_otp:
+            time_since_last = (datetime.utcnow() - last_otp.created_at).total_seconds()
+            if time_since_last < 60:
+                remaining = int(60 - time_since_last)
+                raise HTTPException(429, f"Please wait {remaining} seconds before requesting a new OTP")
+        
+        # Invalidate all previous OTPs for this email
+        await db.execute(text("""
+            DELETE FROM otps WHERE identity = :i
+        """), {"i": identifier})
+        
         otp_code = str(random.randint(100000, 999999))
         
         await db.execute(text("""
@@ -127,7 +146,10 @@ async def verify_login(payload: dict, request: Request):
     if is_email_or_phone:
         # Customer login - verify OTP
         if not otp:
+            print(f"❌ OTP verification failed: OTP not provided for {identifier}")
             raise HTTPException(400, "OTP required")
+        
+        print(f"🔍 Verifying OTP for {identifier}: {otp}")
         
         # Verify OTP
         otp_record = (await db.execute(text("""
@@ -137,7 +159,19 @@ async def verify_login(payload: dict, request: Request):
         """), {"i": identifier, "c": otp})).fetchone()
         
         if not otp_record:
-            raise HTTPException(401, "Invalid or expired OTP")
+            # Check if OTP exists but expired
+            expired_otp = (await db.execute(text("""
+                SELECT * FROM otps WHERE identity = :i ORDER BY created_at DESC LIMIT 1
+            """), {"i": identifier})).fetchone()
+            
+            if expired_otp:
+                print(f"❌ OTP verification failed: OTP expired for {identifier}")
+                raise HTTPException(401, "OTP expired. Please request a new one.")
+            else:
+                print(f"❌ OTP verification failed: No OTP found for {identifier}")
+                raise HTTPException(401, "Invalid OTP. Please check and try again.")
+        
+        print(f"✅ OTP verified successfully for {identifier}")
         
         # Delete used OTP
         await db.execute(text("DELETE FROM otps WHERE identity = :i"), {"i": identifier})
