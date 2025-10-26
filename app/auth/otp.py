@@ -5,7 +5,7 @@ from sqlalchemy import text
 import random
 from ..deps import get_settings
 from ..utils import jwt_encode
-from ..email_service import email_service
+from ..email_service_sendgrid import send_otp_email
 
 router = APIRouter(prefix="/auth/otp", tags=["auth"])
 
@@ -31,8 +31,8 @@ async def request_otp(payload: dict, request: Request, settings=Depends(get_sett
         "e": datetime.utcnow() + timedelta(minutes=5)
     })
     
-    # Send OTP via email (SendGrid)
-    email_sent = email_service.send_otp(email, otp_code, phone)
+    # Send OTP via email (SendGrid API)
+    email_sent = send_otp_email(email, otp_code)
     
     return {
         "ok": True, 
