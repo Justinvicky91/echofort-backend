@@ -1,4 +1,7 @@
 # app/main.py
+# CRITICAL: Import DATABASE_URL fix FIRST to patch os.getenv globally
+from . import fix_database_url  # noqa: F401
+
 from . import social, gps, screentime, family, subscription, test_endpoints
 from fastapi import FastAPI, Request, HTTPException
 from .admin import execute_sql
