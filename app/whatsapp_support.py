@@ -128,13 +128,13 @@ async def whatsapp_webhook(request: Request):
 @router.post("/admin/support/ticket/{ticket_id}/whatsapp-reply")
 async def send_whatsapp_reply(
     ticket_id: int,
-    request: Request,
-    db: DBShim = Depends(get_db)
+    request: Request
 ):
     """
     Send WhatsApp reply to customer
     """
     try:
+        db = request.app.state.db
         data = await request.json()
         message = data.get("message", "")
         employee_name = data.get("employee_name", "Support Agent")
@@ -249,11 +249,13 @@ async def send_whatsapp_message(to_number: str, message: str) -> bool:
 
 
 @router.get("/admin/support/whatsapp-stats")
-async def get_whatsapp_stats(db: DBShim = Depends(get_db)):
+async def get_whatsapp_stats(request: Request):
     """
     Get WhatsApp support statistics
     """
     try:
+        db = request.app.state.db
+        
         # Total WhatsApp tickets
         total = db.execute(
             "SELECT COUNT(*) FROM support_tickets WHERE source = 'whatsapp'"
