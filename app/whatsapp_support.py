@@ -8,7 +8,7 @@ import httpx
 from fastapi import APIRouter, Request, HTTPException, Depends
 from datetime import datetime
 from typing import Optional
-from .deps import get_db, DBShim
+from .deps import DBShim
 
 router = APIRouter()
 
