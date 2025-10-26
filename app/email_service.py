@@ -7,11 +7,11 @@ from email.mime.multipart import MIMEMultipart
 class EmailService:
     def __init__(self):
         # Namecheap SMTP settings
-        self.smtp_server = os.getenv("SMTP_SERVER", "mail.privateemail.com")
+        self.smtp_server = os.getenv("SMTP_HOST", "mail.privateemail.com")
         self.smtp_port = int(os.getenv("SMTP_PORT", "587"))
-        self.smtp_username = os.getenv("SMTP_USERNAME", "noreply@echofort.ai")
+        self.smtp_username = os.getenv("SMTP_USER", "noreply@echofort.ai")
         self.smtp_password = os.getenv("SMTP_PASSWORD", "")
-        self.from_email = os.getenv("FROM_EMAIL", "noreply@echofort.ai")
+        self.from_email = os.getenv("SMTP_FROM", "noreply@echofort.ai")
         self.from_name = os.getenv("FROM_NAME", "EchoFort")
         self.support_email = os.getenv("SUPPORT_EMAIL", "support@echofort.ai")
     
