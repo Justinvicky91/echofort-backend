@@ -5,10 +5,9 @@ Handles WhatsApp messages via Twilio and creates support tickets
 
 import os
 import httpx
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, HTTPException
 from datetime import datetime
 from typing import Optional
-from .deps import DBShim
 
 router = APIRouter()
 
@@ -18,12 +17,14 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 
 @router.post("/webhooks/whatsapp")
-async def whatsapp_webhook(request: Request, db: DBShim = Depends(get_db)):
+async def whatsapp_webhook(request: Request):
     """
     Receive WhatsApp messages from Twilio
     Creates support tickets from WhatsApp messages
     """
     try:
+        db = request.app.state.db
+        
         # Parse Twilio webhook data (form-encoded)
         form_data = await request.form()
         
