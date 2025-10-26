@@ -153,7 +153,7 @@ async def get_pl_statement(request: Request, month: int, year: int):
         })
         total_revenue = revenue_result.fetchone()[0]
         
-        # Calculate Expenses by Category
+        # Calculate Expenses by Category (including infrastructure costs)
         expense_query = text("""
             SELECT category, SUM(amount) as total
             FROM expenses
@@ -167,6 +167,24 @@ async def get_pl_statement(request: Request, month: int, year: int):
         })
         expense_rows = expense_result.fetchall()
         expense_breakdown = {r[0]: r[1] for r in expense_rows}
+        
+        # Add infrastructure costs
+        infra_query = text("""
+            SELECT service, SUM(amount) as total
+            FROM infrastructure_costs
+            WHERE EXTRACT(MONTH FROM date) = :month
+            AND EXTRACT(YEAR FROM date) = :year
+            GROUP BY service
+        """)
+        
+        infra_result = await request.app.state.db.execute(infra_query, {
+            "month": month, "year": year
+        })
+        infra_rows = infra_result.fetchall()
+        infra_breakdown = {f"infra_{r[0]}": r[1] for r in infra_rows}
+        
+        # Combine all expenses
+        expense_breakdown.update(infra_breakdown)
         total_expenses = sum(expense_breakdown.values())
         
         # Calculate Profit/Loss

@@ -5,7 +5,7 @@ from sqlalchemy import text
 import random
 from ..deps import get_settings
 from ..utils import jwt_encode
-from ..email_service_resend import send_otp_email
+from ..email_service_sendgrid import send_otp_email
 
 router = APIRouter(prefix="/auth/otp", tags=["auth"])
 
