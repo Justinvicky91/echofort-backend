@@ -91,9 +91,12 @@ async def initiate_login(payload: dict, request: Request):
                     print(f"❌ Username not found: {identifier}")
                     raise HTTPException(404, "Username not found")
                 
-                print(f"✅ Employee found: {employee['username']}, role: {employee['role']}, super_admin: {employee['is_super_admin']}")
+                # Convert tuple to dict
+                emp_id, emp_username, emp_role, emp_password_hash, emp_is_super_admin, emp_active = employee
                 
-                if employee['is_super_admin']:
+                print(f"✅ Employee found: {emp_username}, role: {emp_role}, super_admin: {emp_is_super_admin}")
+                
+                if emp_is_super_admin:
                     return {
                         "user_type": "super_admin",
                         "requires_otp": False,
@@ -105,7 +108,7 @@ async def initiate_login(payload: dict, request: Request):
                         "user_type": "employee",
                         "requires_otp": False,
                         "requires_password": True,
-                        "role": employee['role'],
+                        "role": emp_role,
                         "message": "Enter your password"
                     }
                     
@@ -170,7 +173,8 @@ async def verify_login(payload: dict, request: Request):
             
             try:
                 result = await db.execute(text("""
-                    SELECT * FROM employees 
+                    SELECT id, username, role, password_hash, is_super_admin, active
+                    FROM employees 
                     WHERE username = :u AND (active = true OR active IS NULL)
                 """), {"u": identifier})
                 
@@ -180,10 +184,13 @@ async def verify_login(payload: dict, request: Request):
                     print(f"❌ Username not found: {identifier}")
                     raise HTTPException(404, "Username not found")
                 
-                print(f"✅ Employee found: {employee['username']}")
+                # Convert tuple to dict
+                emp_id, emp_username, emp_role, emp_password_hash, emp_is_super_admin, emp_active = employee
+                
+                print(f"✅ Employee found: {emp_username}")
                 
                 # Verify password
-                if not verify_password(password, employee['password_hash']):
+                if not verify_password(password, emp_password_hash):
                     print(f"❌ Invalid password for: {identifier}")
                     raise HTTPException(401, "Invalid password")
                 
@@ -191,10 +198,10 @@ async def verify_login(payload: dict, request: Request):
                 
                 # Create session token
                 token_data = {
-                    "sub": str(employee['id']),
-                    "employee_id": str(employee['id']),
-                    "user_type": "super_admin" if employee['is_super_admin'] else "employee",
-                    "role": "super_admin" if employee['is_super_admin'] else employee['role'],
+                    "sub": str(emp_id),
+                    "employee_id": str(emp_id),
+                    "user_type": "super_admin" if emp_is_super_admin else "employee",
+                    "role": "super_admin" if emp_is_super_admin else emp_role,
                     "device_id": device_id,
                     "exp": (datetime.utcnow() + timedelta(hours=8)).timestamp()
                 }
@@ -202,7 +209,7 @@ async def verify_login(payload: dict, request: Request):
                 token = jwt_encode(token_data)
                 
                 # Determine redirect
-                if employee['is_super_admin']:
+                if emp_is_super_admin:
                     redirect = "/super-admin"
                 else:
                     role_redirects = {
@@ -212,18 +219,18 @@ async def verify_login(payload: dict, request: Request):
                         "accounting": "/admin/accounting",
                         "hr": "/admin/hr"
                     }
-                    redirect = role_redirects.get(employee['role'], "/admin/dashboard")
+                    redirect = role_redirects.get(emp_role, "/admin/dashboard")
                 
                 print(f"✅ Login successful for: {identifier}, redirecting to: {redirect}")
                 
                 return {
                     "token": token,
                     "user": {
-                        "id": employee['id'],
-                        "employee_id": employee['id'],
-                        "username": employee['username'],
-                        "role": "super_admin" if employee['is_super_admin'] else employee['role'],
-                        "user_type": "super_admin" if employee['is_super_admin'] else "employee"
+                        "id": emp_id,
+                        "employee_id": emp_id,
+                        "username": emp_username,
+                        "role": "super_admin" if emp_is_super_admin else emp_role,
+                        "user_type": "super_admin" if emp_is_super_admin else "employee"
                     },
                     "redirect": redirect
                 }
@@ -247,13 +254,14 @@ async def test_auth(request: Request):
         db = request.app.state.db
         
         # Test database connection
-        result = await db.execute(text("SELECT COUNT(*) as count FROM employees"))
-        count = result.fetchone()
+        result = await db.execute(text("SELECT COUNT(*) FROM employees"))
+        count_tuple = result.fetchone()
+        count = count_tuple[0] if count_tuple else 0
         
         return {
             "status": "ok",
             "database": "connected",
-            "employee_count": count['count'] if count else 0,
+            "employee_count": count,
             "message": "Authentication system operational"
         }
     except Exception as e:
