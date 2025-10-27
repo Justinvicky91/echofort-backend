@@ -8,8 +8,16 @@ import json
 import asyncio
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from openai import OpenAI, AsyncOpenAI
 import httpx
+
+# Lazy import to prevent startup crashes if openai not installed
+try:
+    from openai import OpenAI, AsyncOpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+    OpenAI = None
+    AsyncOpenAI = None
 
 class WhisperAnalyzer:
     """
@@ -18,6 +26,8 @@ class WhisperAnalyzer:
     """
     
     def __init__(self):
+        if not OPENAI_AVAILABLE:
+            raise ImportError("OpenAI package not installed. Install with: pip install openai")
         self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.scam_analysis_prompt = """
 You are an expert scam detection AI analyzing phone call transcriptions from India.
