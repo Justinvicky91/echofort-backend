@@ -226,6 +226,14 @@ app.include_router(emp_mgmt.router)
 from . import whatsapp_sms_protection
 app.include_router(whatsapp_sms_protection.router)
 
+# Complaint Filing System
+from . import complaint_filing
+app.include_router(complaint_filing.router)
+
+# Evidence Vault
+from . import evidence_vault
+app.include_router(evidence_vault.router)
+
 # Call Recording Vault (Super Admin)
 from .admin import call_recording_vault
 app.include_router(call_recording_vault.router)
