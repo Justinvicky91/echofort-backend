@@ -234,6 +234,10 @@ app.include_router(complaint_filing.router)
 from . import evidence_vault
 app.include_router(evidence_vault.router)
 
+# Caller ID System
+from . import caller_id
+app.include_router(caller_id.router)
+
 # Call Recording Vault (Super Admin)
 from .admin import call_recording_vault
 app.include_router(call_recording_vault.router)
