@@ -244,3 +244,7 @@ app.include_router(whatsapp_support.router)
 # Admin Approvals
 from . import admin_approvals
 app.include_router(admin_approvals.router)
+
+# Call Analysis with Whisper API
+from . import call_analysis
+app.include_router(call_analysis.router)
