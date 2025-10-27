@@ -325,12 +325,15 @@ async def update_super_admin(payload: dict, request: Request):
     if not existing:
         raise HTTPException(404, "No super admin found to update")
     
+    # Get user_id (handle both tuple and dict)
+    user_id = existing[1] if isinstance(existing, tuple) else existing['user_id']
+    
     # Update user record
     await db.execute(text("""
         UPDATE users
         SET email = :email, name = :name
         WHERE id = :user_id
-    """), {"email": email, "name": name, "user_id": existing['user_id']})
+    """), {"email": email, "name": name, "user_id": user_id})
     
     # Update employee record
     await db.execute(text("""
