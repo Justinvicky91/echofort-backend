@@ -301,6 +301,59 @@ async def verify_login(payload: dict, request: Request):
                 "redirect": role_redirects.get(employee['role'], "/admin/dashboard")
             }
 
+@router.put("/setup/super-admin/update")
+async def update_super_admin(payload: dict, request: Request):
+    """
+    Update existing super admin credentials
+    """  
+    username = payload.get("username")
+    password = payload.get("password")
+    email = payload.get("email")
+    name = payload.get("name")
+    phone = payload.get("phone")
+    
+    if not username or not password or not email or not name:
+        raise HTTPException(400, "Username, password, email, and name required")
+    
+    db = request.app.state.db
+    
+    # Check if super admin exists
+    existing = (await db.execute(text("""
+        SELECT id, user_id FROM employees WHERE is_super_admin = true
+    """))).fetchone()
+    
+    if not existing:
+        raise HTTPException(404, "No super admin found to update")
+    
+    # Update user record
+    await db.execute(text("""
+        UPDATE users
+        SET email = :email, name = :name
+        WHERE id = :user_id
+    """), {"email": email, "name": name, "user_id": existing['user_id']})
+    
+    # Update employee record
+    await db.execute(text("""
+        UPDATE employees
+        SET username = :username,
+            password_hash = :password,
+            phone = :phone
+        WHERE is_super_admin = true
+    """), {
+        "username": username,
+        "password": hash_password(password),
+        "phone": phone
+    })
+    
+    await db.commit()
+    
+    return {
+        "ok": True,
+        "message": "Super admin updated successfully",
+        "username": username,
+        "email": email
+    }
+
 @router.post("/setup/super-admin")
 async def setup_super_admin(payload: dict, request: Request):
     """
