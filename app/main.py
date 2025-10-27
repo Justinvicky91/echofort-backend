@@ -222,6 +222,10 @@ app.include_router(fixed_auth.router)
 # Register employee management router
 app.include_router(emp_mgmt.router)
 
+# WhatsApp/SMS Protection
+from . import whatsapp_sms_protection
+app.include_router(whatsapp_sms_protection.router)
+
 # Call Recording Vault (Super Admin)
 from .admin import call_recording_vault
 app.include_router(call_recording_vault.router)
