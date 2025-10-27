@@ -240,3 +240,8 @@ app.include_router(support_management.router)
 # WhatsApp Support Integration
 from . import whatsapp_support
 app.include_router(whatsapp_support.router)
+    # TEMPORARY - DELETE AFTER USE
+    from .temp_admin_update import router as temp_admin_router
+    app.include_router(temp_admin_router)
+    from .temp_admin_update import router as temp_admin_router
+    app.include_router(temp_admin_router)
