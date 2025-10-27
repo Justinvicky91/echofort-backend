@@ -245,7 +245,6 @@ app.include_router(whatsapp_support.router)
 from . import admin_approvals
 app.include_router(admin_approvals.router)
 
-# Call Analysis with Whisper API
-# TEMPORARILY DISABLED FOR DEBUGGING
-# from . import call_analysis
-# app.include_router(call_analysis.router)
+# Call Analysis with Whisper API (Simplified Version)
+from . import whisper_analysis
+app.include_router(whisper_analysis.router)
