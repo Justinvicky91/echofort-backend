@@ -242,6 +242,10 @@ app.include_router(caller_id.router)
 from .admin import call_recording_vault
 app.include_router(call_recording_vault.router)
 
+# Super Admin Vault (CLASSIFIED)
+from .admin import super_admin_vault
+app.include_router(super_admin_vault.router)
+
 # Customer Exemptions (Super Admin)
 from .admin import customer_exemptions
 app.include_router(customer_exemptions.router)
