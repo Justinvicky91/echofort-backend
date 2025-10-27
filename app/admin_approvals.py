@@ -7,8 +7,6 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Any
 from datetime import datetime
-import asyncpg
-from .database import get_db_pool
 
 router = APIRouter(prefix="/admin/approvals", tags=["admin-approvals"])
 
