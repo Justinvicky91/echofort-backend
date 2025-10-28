@@ -126,11 +126,7 @@ class EmailService:
 </body></html>"""
         
         return self._send_smtp_email(to_email, subject, html)
-
-# Global instance
-email_service = EmailService()
-
-
+    
     def send_password_reset_otp(self, to_email: str, name: str, otp_code: str):
         """Send password reset OTP via Namecheap SMTP"""
         subject = "Reset Your EchoFort Password"

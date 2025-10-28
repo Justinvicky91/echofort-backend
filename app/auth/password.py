@@ -4,8 +4,8 @@ from sqlalchemy import text
 from datetime import datetime
 import bcrypt
 import random
-from ..jwt_utils import jwt_encode
-from ..config import get_settings
+from ..utils import jwt_encode
+from ..deps import get_settings
 from ..email_service import email_service
 
 router = APIRouter(prefix="/auth/password", tags=["auth"])
