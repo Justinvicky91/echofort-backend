@@ -53,7 +53,21 @@ async def initiate_login(payload: dict, request: Request):
     is_email_or_phone = "@" in identifier or identifier.isdigit()
     
     if is_email_or_phone:
-        # Customer login - send OTP
+        # Check if this email belongs to super admin FIRST
+        if "@" in identifier:
+            super_admin = (await db.execute(text("""
+                SELECT e.id, e.username, e.phone, u.email, u.name
+                FROM employees e
+                JOIN users u ON e.user_id = u.id
+                WHERE u.email = :email AND e.is_super_admin = true
+            """), {"email": identifier})).fetchone()
+            
+            if super_admin:
+                # This is super admin - proceed with email OTP
+                print(f"🔐 Super Admin login detected for {identifier}")
+                # Continue to send OTP (will be handled as super_admin in verify step)
+        
+        # Customer or Super Admin login - send OTP
         
         # Check if OTP was sent in the last 60 seconds (resend cooldown)
         last_otp = (await db.execute(text("""
@@ -184,6 +198,38 @@ async def verify_login(payload: dict, request: Request):
         
         # Delete used OTP
         await db.execute(text("DELETE FROM otps WHERE identity = :i"), {"i": identifier})
+        
+        # Check if this is super admin
+        if "@" in identifier:
+            super_admin = (await db.execute(text("""
+                SELECT e.id as employee_id, e.username, e.phone, u.id as user_id, u.email, u.name
+                FROM employees e
+                JOIN users u ON e.user_id = u.id
+                WHERE u.email = :email AND e.is_super_admin = true
+            """), {"email": identifier})).fetchone()
+            
+            if super_admin:
+                # Super Admin - return temp token and trigger WhatsApp OTP
+                print(f"🔐 Super Admin verified, sending WhatsApp OTP to {super_admin['phone']}")
+                
+                temp_token = jwt_encode({
+                    "sub": str(super_admin['employee_id']),
+                    "email": super_admin['email'],
+                    "temp": True,
+                    "exp": (datetime.utcnow() + timedelta(minutes=10)).timestamp()
+                })
+                
+                return {
+                    "temp_token": temp_token,
+                    "user": {
+                        "id": super_admin['employee_id'],
+                        "email": super_admin['email'],
+                        "name": super_admin['name'],
+                        "role": "super_admin"
+                    },
+                    "requires_mobile_otp": True,
+                    "phone": super_admin['phone']
+                }
         
         # Get or create user
         user = (await db.execute(text("SELECT * FROM users WHERE email = :e OR phone = :p"), 
