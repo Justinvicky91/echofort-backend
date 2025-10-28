@@ -25,6 +25,9 @@ async def simple_login(payload: dict, request: Request):
     try:
         db = request.app.state.db
         
+        # Debug: Log the username being searched
+        print(f"[DEBUG] simple_login: Looking for username='{username}'")
+        
         # Get employee record
         result = (await db.execute(text("""
             SELECT id, username, password_hash, role, is_super_admin, department
@@ -32,7 +35,15 @@ async def simple_login(payload: dict, request: Request):
             WHERE username = :u
         """), {"u": username})).fetchone()
         
+        print(f"[DEBUG] simple_login: Query result={result}")
+        
         if not result:
+            # Check if table exists
+            try:
+                table_check = (await db.execute(text("SELECT COUNT(*) FROM employees"))).fetchone()
+                print(f"[DEBUG] simple_login: Total employees in table: {table_check[0]}")
+            except Exception as e:
+                print(f"[DEBUG] simple_login: Table check error: {e}")
             raise HTTPException(401, "Invalid username or password")
         
         # Unpack tuple result
