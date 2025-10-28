@@ -130,3 +130,44 @@ class EmailService:
 # Global instance
 email_service = EmailService()
 
+
+    def send_password_reset_otp(self, to_email: str, name: str, otp_code: str):
+        """Send password reset OTP via Namecheap SMTP"""
+        subject = "Reset Your EchoFort Password"
+        
+        html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:20px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+<tr><td style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;text-align:center;">
+<h1 style="color:white;margin:0;font-size:28px;">EchoFort</h1>
+<p style="color:rgba(255,255,255,0.9);margin:5px 0 0 0;font-size:14px;">Password Reset Request</p>
+</td></tr>
+<tr><td style="padding:40px 30px;">
+<h2 style="color:#333;margin:0 0 15px 0;font-size:22px;">Hi {name},</h2>
+<p style="color:#666;line-height:1.6;margin:0 0 25px 0;">We received a request to reset your password. Use this code to reset it:</p>
+<div style="background:#f8f9fa;padding:25px;text-align:center;border-radius:8px;margin:25px 0;">
+<div style="color:#667eea;font-size:42px;font-weight:bold;letter-spacing:10px;font-family:'Courier New',monospace;">{otp_code}</div>
+</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="margin:25px 0;">
+<tr><td style="padding:8px 0;color:#666;font-size:14px;"><strong>Valid for:</strong> 10 minutes</td></tr>
+</table>
+<div style="background:#fff3cd;border-left:4px solid #ffc107;padding:15px;margin:25px 0;border-radius:4px;">
+<p style="margin:0;color:#856404;font-size:13px;"><strong>⚠️ Security Notice:</strong> If you didn't request this, please ignore this email or contact support.</p>
+</div>
+</td></tr>
+<tr><td style="background:#f8f9fa;padding:25px 30px;border-top:1px solid #e9ecef;">
+<p style="color:#999;font-size:12px;margin:0;">Need help? Contact {self.support_email}</p>
+</td></tr>
+<tr><td style="background:#333;padding:20px;text-align:center;">
+<p style="color:#999;font-size:12px;margin:0;">© 2025 EchoFort AI | India's Trust Shield</p>
+</td></tr>
+</table></td></tr></table>
+</body></html>"""
+        
+        return self._send_smtp_email(to_email, subject, html)
+
+# Singleton instance
+email_service = EmailService()
