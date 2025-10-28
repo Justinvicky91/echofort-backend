@@ -16,7 +16,7 @@ import os
 import psycopg
 
 from .deps import get_settings
-from .auth import otp, device, password
+from .auth import otp, device, password, reset_admin_password
 from .ai import voice, image
 from .billing import razorpay_webhooks, stripe_webhooks
 from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv
@@ -257,6 +257,7 @@ app.include_router(customer_exemptions.router)
 from .admin import initialize_super_admin, dashboard_stats, service_integrations
 app.include_router(initialize_super_admin.router, prefix="/auth", tags=["Super Admin Init"])
 app.include_router(simple_login.router)
+app.include_router(reset_admin_password.router)
 app.include_router(dashboard_stats.router)
 app.include_router(service_integrations.router)
 
