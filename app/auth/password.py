@@ -34,7 +34,7 @@ async def set_password(payload: dict, request: Request):
     
     # Check if user exists
     user = (await db.execute(text("""
-        SELECT user_id FROM users WHERE LOWER(identity) = :e LIMIT 1
+        SELECT id FROM users WHERE LOWER(identity) = :e LIMIT 1
     """), {"e": email})).fetchone()
     
     if not user:
@@ -63,7 +63,7 @@ async def login_with_password(payload: dict, request: Request):
     
     # Get user
     user = (await db.execute(text("""
-        SELECT user_id, password_hash, role, name FROM users 
+        SELECT id, password_hash, role, name FROM users 
         WHERE LOWER(identity) = :e LIMIT 1
     """), {"e": email})).fetchone()
     
@@ -77,14 +77,14 @@ async def login_with_password(payload: dict, request: Request):
     # Update last login
     await db.execute(text("""
         UPDATE users SET last_login = NOW(), device_id = :d 
-        WHERE user_id = :uid
-    """), {"d": device_id, "uid": user.user_id})
+        WHERE id = :uid
+    """), {"d": device_id, "uid": user.id})
     await db.commit()
     
     # Generate JWT
     token = jwt_encode({
         "sub": email,
-        "user_id": user.user_id,
+        "user_id": user.id,
         "role": user.role or "customer",
         "device_id": device_id,
         "iat": int(datetime.utcnow().timestamp())
@@ -93,7 +93,7 @@ async def login_with_password(payload: dict, request: Request):
     return {
         "ok": True,
         "token": token,
-        "user_id": user.user_id,
+        "user_id": user.id,
         "role": user.role or "customer",
         "name": user.name
     }
@@ -110,7 +110,7 @@ async def forgot_password(payload: dict, request: Request, settings=Depends(get_
     
     # Check if user exists
     user = (await db.execute(text("""
-        SELECT user_id, name FROM users WHERE LOWER(identity) = :e LIMIT 1
+        SELECT id, name FROM users WHERE LOWER(identity) = :e LIMIT 1
     """), {"e": email})).fetchone()
     
     if not user:
