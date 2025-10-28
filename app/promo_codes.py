@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import random
 import string
 from app.utils import get_current_user
-from app.rbac import require_role
+from app.rbac import guard_admin
 
 router = APIRouter(prefix="/api/promo-codes", tags=["Promo Codes"])
 
@@ -97,7 +97,7 @@ async def get_db_connection():
 # SUPER ADMIN ENDPOINTS
 # ============================================================================
 
-@router.post("/create", dependencies=[Depends(require_role("super_admin"))])
+@router.post("/create", dependencies=[Depends(guard_admin)])
 async def create_promo_code(data: PromoCodeCreate, current_user: dict = Depends(get_current_user)):
     """Create a new promo code (Super Admin only)"""
     conn = await get_db_connection()
@@ -132,7 +132,7 @@ async def create_promo_code(data: PromoCodeCreate, current_user: dict = Depends(
     finally:
         await conn.close()
 
-@router.get("/list", dependencies=[Depends(require_role("super_admin"))])
+@router.get("/list", dependencies=[Depends(guard_admin)])
 async def list_promo_codes(current_user: dict = Depends(get_current_user)):
     """List all promo codes with usage stats (Super Admin only)"""
     conn = await get_db_connection()
@@ -161,7 +161,7 @@ async def list_promo_codes(current_user: dict = Depends(get_current_user)):
     finally:
         await conn.close()
 
-@router.get("/analytics/{code}", dependencies=[Depends(require_role("super_admin"))])
+@router.get("/analytics/{code}", dependencies=[Depends(guard_admin)])
 async def get_promo_code_analytics(code: str, current_user: dict = Depends(get_current_user)):
     """Get detailed analytics for a specific promo code (Super Admin only)"""
     conn = await get_db_connection()
@@ -220,7 +220,7 @@ async def get_promo_code_analytics(code: str, current_user: dict = Depends(get_c
     finally:
         await conn.close()
 
-@router.get("/commission-report", dependencies=[Depends(require_role("super_admin"))])
+@router.get("/commission-report", dependencies=[Depends(guard_admin)])
 async def get_commission_report(current_user: dict = Depends(get_current_user)):
     """Get commission report grouped by referrer (Super Admin only)"""
     conn = await get_db_connection()
