@@ -93,8 +93,8 @@ async def configure_payment_gateway(
                     api_key_encrypted = :api_key,
                     secret_key_encrypted = :secret_key,
                     webhook_secret_encrypted = :webhook_secret,
-                    supported_currencies = :currencies::jsonb,
-                    supported_regions = :regions::jsonb,
+                    supported_currencies = :currencies,
+                    supported_regions = :regions,
                     priority = :priority,
                     updated_at = NOW(),
                     updated_by = :admin_id
@@ -124,7 +124,7 @@ async def configure_payment_gateway(
                 ) VALUES (
                     :name, :enabled, :test_mode,
                     :api_key, :secret_key, :webhook_secret,
-                    :currencies::jsonb, :regions::jsonb, :priority,
+                    :currencies, :regions, :priority,
                     NOW(), :admin_id
                 )
             """), {
@@ -147,7 +147,7 @@ async def configure_payment_gateway(
             INSERT INTO admin_audit_log (
                 admin_id, action, details, created_at
             ) VALUES (
-                :admin_id, :action, :details::jsonb, NOW()
+                :admin_id, :action, :details, NOW()
             )
         """), {
             "admin_id": current_user["id"],
@@ -306,7 +306,7 @@ async def toggle_gateway(
             INSERT INTO admin_audit_log (
                 admin_id, action, details, created_at
             ) VALUES (
-                :admin_id, :action, :details::jsonb, NOW()
+                :admin_id, :action, :details, NOW()
             )
         """), {
             "admin_id": current_user["id"],
@@ -409,7 +409,7 @@ async def delete_gateway(
             INSERT INTO admin_audit_log (
                 admin_id, action, details, created_at
             ) VALUES (
-                :admin_id, :action, :details::jsonb, NOW()
+                :admin_id, :action, :details, NOW()
             )
         """), {
             "admin_id": current_user["id"],
