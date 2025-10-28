@@ -56,7 +56,7 @@ async def initiate_login(payload: dict, request: Request):
         # Check if this email belongs to super admin FIRST
         if "@" in identifier:
             super_admin = (await db.execute(text("""
-                SELECT e.id, e.username, e.phone, u.email, u.name
+                SELECT e.id, e.username, u.email, u.name
                 FROM employees e
                 JOIN users u ON e.user_id = u.id
                 WHERE u.email = :email AND e.is_super_admin = true
@@ -202,7 +202,7 @@ async def verify_login(payload: dict, request: Request):
         # Check if this is super admin
         if "@" in identifier:
             super_admin = (await db.execute(text("""
-                SELECT e.id as employee_id, e.username, e.phone, u.id as user_id, u.email, u.name
+                SELECT e.id as employee_id, e.username, u.id as user_id, u.email, u.name, u.phone
                 FROM employees e
                 JOIN users u ON e.user_id = u.id
                 WHERE u.email = :email AND e.is_super_admin = true
@@ -210,7 +210,8 @@ async def verify_login(payload: dict, request: Request):
             
             if super_admin:
                 # Super Admin - return temp token and trigger WhatsApp OTP
-                print(f"🔐 Super Admin verified, sending WhatsApp OTP to {super_admin['phone']}")
+                phone = super_admin['phone'] if super_admin.get('phone') else None
+                print(f"🔐 Super Admin verified, phone: {phone}")
                 
                 temp_token = jwt_encode({
                     "sub": str(super_admin['employee_id']),
@@ -227,8 +228,8 @@ async def verify_login(payload: dict, request: Request):
                         "name": super_admin['name'],
                         "role": "super_admin"
                     },
-                    "requires_mobile_otp": True,
-                    "phone": super_admin['phone']
+                    "requires_mobile_otp": True if phone else False,
+                    "phone": phone
                 }
         
         # Get or create user
