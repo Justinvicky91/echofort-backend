@@ -160,8 +160,6 @@ async def configure_payment_gateway(
             })
         })
         
-        await db.commit()
-        
         return {
             "ok": True,
             "message": f"Payment gateway {config.gateway_name} {action} successfully",
