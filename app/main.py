@@ -16,7 +16,7 @@ import os
 import psycopg
 
 from .deps import get_settings
-from .auth import otp, device, password, admin_info
+from .auth import otp, device, password
 from .ai import voice, image
 from .billing import razorpay_webhooks, stripe_webhooks
 from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv
@@ -221,9 +221,6 @@ app.include_router(fixed_auth.router)
 
 # Register password auth router
 app.include_router(password.router)
-
-# TEMPORARY: Admin info endpoint (DELETE AFTER LOGIN)
-app.include_router(admin_info.router)
 
 # Register employee management router
 app.include_router(emp_mgmt.router)
