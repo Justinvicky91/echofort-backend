@@ -10,7 +10,8 @@ from typing import Optional, List
 from datetime import datetime, timedelta
 import random
 import string
-from app.auth import get_current_user, require_role
+from app.utils import get_current_user
+from app.rbac import require_role
 
 router = APIRouter(prefix="/api/promo-codes", tags=["Promo Codes"])
 
