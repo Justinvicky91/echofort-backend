@@ -217,7 +217,7 @@ async def verify_login(payload: dict, request: Request):
                 "id": user['id'],
                 "email": user['email'],
                 "name": user['name'],
-                "user_type": "customer"
+                "role": user.get('role') or "customer"
             },
             "redirect": "/dashboard"
         }
