@@ -12,7 +12,7 @@ router = APIRouter(prefix="/auth/otp", tags=["auth"])
 @router.post("/request")
 async def request_otp(payload: dict, request: Request, settings=Depends(get_settings)):
     """Request OTP via email (SendGrid)"""
-    email = payload.get("email")
+    email = payload.get("email", "").lower().strip()
     phone = payload.get("phone", "")
     
     if not email:
@@ -23,7 +23,7 @@ async def request_otp(payload: dict, request: Request, settings=Depends(get_sett
     # Check if OTP was sent in the last 60 seconds (resend cooldown)
     last_otp = (await db.execute(text("""
         SELECT created_at FROM otps 
-        WHERE identity = :i 
+        WHERE LOWER(identity) = :i 
         ORDER BY created_at DESC LIMIT 1
     """), {"i": email})).fetchone()
     
@@ -35,7 +35,7 @@ async def request_otp(payload: dict, request: Request, settings=Depends(get_sett
     
     # Invalidate all previous OTPs for this email
     await db.execute(text("""
-        DELETE FROM otps WHERE identity = :i
+        DELETE FROM otps WHERE LOWER(identity) = :i
     """), {"i": email})
     
     # Generate random 6-digit OTP
@@ -63,7 +63,7 @@ async def request_otp(payload: dict, request: Request, settings=Depends(get_sett
 @router.post("/verify")
 async def verify_otp(payload: dict, request: Request, settings=Depends(get_settings)):
     """Verify OTP and create user session with device binding"""
-    email = payload.get("email")
+    email = payload.get("email", "").lower().strip()
     otp = payload.get("otp")
     device_id = payload.get("device_id")
     device_name = payload.get("device_name", "Unknown Device")
@@ -74,10 +74,10 @@ async def verify_otp(payload: dict, request: Request, settings=Depends(get_setti
     
     db = request.app.state.db
     
-    # Verify OTP
+    # Verify OTP (get latest valid one)
     otp_row = (await db.execute(text("""
         SELECT code, expires_at FROM otps 
-        WHERE identity = :i 
+        WHERE LOWER(identity) = :i AND expires_at > NOW()
         ORDER BY created_at DESC LIMIT 1
     """), {"i": email})).fetchone()
     
@@ -116,10 +116,12 @@ async def verify_otp(payload: dict, request: Request, settings=Depends(get_setti
         VALUES (:e, :e, :n, NOW(), :d, :dn, TRUE, NOW(), NOW())
         ON CONFLICT (identity) DO UPDATE 
         SET last_login=NOW(), device_id=:d, device_name=:dn, device_bound=TRUE, email=:e, name=:n
-        RETURNING user_id
+        RETURNING user_id, role
     """), {"e": email, "n": name, "d": device_id, "dn": device_name})
     
-    user_id = result.fetchone()[0]
+    row = result.fetchone()
+    user_id = row[0]
+    role = row[1] if len(row) > 1 else 'customer'
     
     # Send welcome email (async, don't block)
     try:
@@ -131,6 +133,7 @@ async def verify_otp(payload: dict, request: Request, settings=Depends(get_setti
     token = jwt_encode({
         "sub": email, 
         "user_id": user_id,
+        "role": role,
         "device_id": device_id, 
         "iat": int(datetime.utcnow().timestamp())
     })
@@ -139,6 +142,7 @@ async def verify_otp(payload: dict, request: Request, settings=Depends(get_setti
         "ok": True, 
         "token": token, 
         "user_id": user_id,
+        "role": role,
         "device_id": device_id,
         "device_bound": True
     }
