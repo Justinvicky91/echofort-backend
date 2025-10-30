@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from sqlalchemy import text
 from pydantic import BaseModel
 import bcrypt
-from ..auth.jwt_utils import get_current_user
+from ..utils import get_current_user
 
 router = APIRouter(prefix="/admin/employees", tags=["admin"])
 
