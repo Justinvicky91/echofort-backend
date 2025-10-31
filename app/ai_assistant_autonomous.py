@@ -41,8 +41,11 @@ class LearningEntry(BaseModel):
 async def get_real_platform_context() -> Dict[str, Any]:
     """Get REAL platform data from database"""
     try:
-        from app.deps import get_db_engine
-        engine = get_db_engine()
+        # Create async engine from DATABASE_URL
+        if not ASYNC_DATABASE_URL:
+            return {"error": "Database URL not configured"}
+        
+        engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True)
         
         async with engine.begin() as conn:
             # Get real user count
