@@ -10,6 +10,7 @@ from datetime import datetime
 import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.asyncio import create_async_engine
+import json
 
 router = APIRouter(prefix="/api/ai-execution", tags=["AI Execution"])
 
@@ -77,7 +78,7 @@ async def propose_action(action: PendingAction) -> dict:
                 "sql_command": action.sql_command,
                 "rollback_sql": action.rollback_sql,
                 "file_path": action.file_path,
-                "code_changes": action.code_changes,
+                "code_changes": json.dumps(action.code_changes) if action.code_changes else None,
                 "package_name": action.package_name,
                 "package_version": action.package_version
             }
