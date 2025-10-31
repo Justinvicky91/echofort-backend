@@ -52,49 +52,62 @@ async def propose_action(action: PendingAction) -> dict:
     """
     Store a proposed action for Super Admin approval
     """
-    engine = await get_db_engine()
-    
-    async with engine.begin() as conn:
-        result = await conn.execute(
-            text("""
-                INSERT INTO ai_pending_actions (
-                    action_type, description, risk_level,
-                    sql_command, rollback_sql,
-                    file_path, code_changes,
-                    package_name, package_version,
-                    status, requested_by, requested_at
-                )
-                VALUES (
-                    :action_type, :description, :risk_level,
-                    :sql_command, :rollback_sql,
-                    :file_path, :code_changes,
-                    :package_name, :package_version,
-                    'pending_approval', 'echofort_ai', CURRENT_TIMESTAMP
-                )
-                RETURNING id
-            """),
-            {
-                "action_type": action.action_type,
-                "description": action.description,
-                "risk_level": action.risk_level,
-                "sql_command": action.sql_command,
-                "rollback_sql": action.rollback_sql,
-                "file_path": action.file_path,
-                "code_changes": json.dumps(action.code_changes) if action.code_changes else None,
-                "package_name": action.package_name,
-                "package_version": action.package_version
-            }
-        )
+    try:
+        print(f"[DEBUG] propose_action called with: {action.dict()}")
+        engine = await get_db_engine()
+        print(f"[DEBUG] Database engine created successfully")
         
-        action_id = result.fetchone()[0]
-    
-    await engine.dispose()
-    
-    return {
-        "action_id": action_id,
-        "status": "pending_approval",
-        "message": f"Action #{action_id} submitted for Super Admin approval"
-    }
+        async with engine.begin() as conn:
+            print(f"[DEBUG] Database connection established")
+            result = await conn.execute(
+                text("""
+                    INSERT INTO ai_pending_actions (
+                        action_type, description, risk_level,
+                        sql_command, rollback_sql,
+                        file_path, code_changes,
+                        package_name, package_version,
+                        status, requested_by, requested_at
+                    )
+                    VALUES (
+                        :action_type, :description, :risk_level,
+                        :sql_command, :rollback_sql,
+                        :file_path, :code_changes,
+                        :package_name, :package_version,
+                        'pending_approval', 'echofort_ai', CURRENT_TIMESTAMP
+                    )
+                    RETURNING id
+                """),
+                {
+                    "action_type": action.action_type,
+                    "description": action.description,
+                    "risk_level": action.risk_level,
+                    "sql_command": action.sql_command,
+                    "rollback_sql": action.rollback_sql,
+                    "file_path": action.file_path,
+                    "code_changes": json.dumps(action.code_changes) if action.code_changes else None,
+                    "package_name": action.package_name,
+                    "package_version": action.package_version
+                }
+            )
+            print(f"[DEBUG] INSERT query executed successfully")
+            
+            action_id = result.fetchone()[0]
+            print(f"[DEBUG] Action ID retrieved: {action_id}")
+        
+        await engine.dispose()
+        print(f"[DEBUG] Database engine disposed")
+        
+        return {
+            "action_id": action_id,
+            "status": "pending_approval",
+            "message": f"Action #{action_id} submitted for Super Admin approval"
+        }
+    except Exception as e:
+        print(f"[ERROR] propose_action failed: {str(e)}")
+        print(f"[ERROR] Exception type: {type(e).__name__}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        raise
 
 
 async def execute_sql_action(action_id: int, sql_command: str, rollback_sql: Optional[str] = None) -> dict:
