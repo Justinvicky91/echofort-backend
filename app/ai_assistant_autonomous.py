@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 import subprocess
 import glob
+from app.ai_execution_engine import propose_action, PendingAction
 
 router = APIRouter(prefix="/api/echofort-ai-autonomous", tags=["EchoFort AI Autonomous"])
 
