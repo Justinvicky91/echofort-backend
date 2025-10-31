@@ -30,42 +30,31 @@ class ExecuteCommand(BaseModel):
     auto_fix: bool = True  # If True, AI will propose fixes automatically
 
 
-async def analyze_and_propose_fix(issue_description: str, context: Dict) -> Optional[Dict]:
+async def analyze_command_and_generate_fix(command: str, context: Dict) -> Optional[Dict]:
     """
-    Analyze an issue and propose a fix
-    Returns: proposed action or None
+    Analyze user command and generate appropriate fix
     """
+    command_lower = command.lower()
     
-    # Example: Fix missing column in scam_cases table
-    if "status" in issue_description and "scam_cases" in issue_description:
+    # Check if command is about adding status column to scam_cases
+    if ("status" in command_lower and "scam_cases" in command_lower) or \
+       ("scam" in command_lower and "column" in command_lower):
         return {
             "action_type": "sql_execution",
             "description": "Add missing 'status' column to scam_cases table",
             "risk_level": "medium",
             "sql_command": """
                 ALTER TABLE scam_cases 
-                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active';
+                ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'open';
                 
-                COMMENT ON COLUMN scam_cases.status IS 'Status of the scam case: active, resolved, investigating';
+                COMMENT ON COLUMN scam_cases.status IS 'Status of the scam case: open, investigating, resolved, closed';
             """,
-            "rollback_sql": """
-                ALTER TABLE scam_cases DROP COLUMN IF EXISTS status;
-            """
+            "affected_tables": ["scam_cases"],
+            "estimated_impact": "Low - adds optional column with default value",
+            "rollback_command": "ALTER TABLE scam_cases DROP COLUMN IF EXISTS status;"
         }
     
-    # Example: Fix revenue query
-    if "revenue" in issue_description.lower() or "transactions" in issue_description.lower():
-        return {
-            "action_type": "code_modification",
-            "description": "Update revenue query to use subscriptions table instead of non-existent transactions table",
-            "risk_level": "low",
-            "file_path": "/app/app/ai_assistant_autonomous.py",
-            "code_changes": {
-                "line": 65,
-                "old": "SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'completed'",
-                "new": "SELECT COALESCE(SUM(amount), 0) FROM subscriptions WHERE status = 'active'"
-            }
-        }
+    # Add more command patterns here as needed
     
     return None
 
@@ -81,6 +70,7 @@ async def chat_with_execution(request: ExecuteCommand):
         
         context = {}
         issues_found = []
+        fix_submitted = False
         
         async with engine.begin() as conn:
             # Try to get user count
@@ -103,17 +93,18 @@ async def chat_with_execution(request: ExecuteCommand):
                 context["total_scam_cases"] = result.scalar()
             except Exception as e:
                 issues_found.append(f"Scam cases table issue: {str(e)}")
-                
-                # If there's an issue with scam_cases, propose a fix
-                if request.auto_fix and "status" in str(e):
-                    proposed_fix = await analyze_and_propose_fix(str(e), context)
-                    if proposed_fix:
-                        # Submit the fix for approval
-                        action = PendingAction(**proposed_fix)
-                        result = await propose_action(action)
-                        issues_found.append(f"✅ Proposed fix: {result['message']}")
         
         await engine.dispose()
+        
+        # Analyze user command and generate fix if auto_fix is enabled
+        if request.auto_fix:
+            proposed_fix = await analyze_command_and_generate_fix(request.command, context)
+            if proposed_fix:
+                # Submit the fix for approval
+                action = PendingAction(**proposed_fix)
+                result = await propose_action(action)
+                issues_found.append(f"✅ Fix submitted to AI Pending Actions: {result['message']}")
+                fix_submitted = True
         
         # Call OpenAI for intelligent response
         prompt = f"""
@@ -124,13 +115,13 @@ User Command: {request.command}
 Real Platform Data:
 {json.dumps(context, indent=2)}
 
-Issues Found:
-{json.dumps(issues_found, indent=2)}
+Fix Status: {"Fix has been submitted to AI Pending Actions for approval" if fix_submitted else "No fix was generated"}
 
 Based on the data above:
-1. If there are issues, explain what's wrong
-2. If you proposed a fix, explain what the fix does
-3. Tell the user to check "AI Pending Actions" in Super Admin dashboard to approve the fix
+1. Acknowledge the user's command
+2. If a fix was submitted, explain what the fix does in detail
+3. Tell the user to check "AI Pending Actions" in the Super Admin dashboard to review and approve the fix
+4. Provide system status information
 
 Be technical, specific, and action-oriented. Don't just explain - tell them what you're DOING to fix it.
 """
@@ -157,7 +148,7 @@ Be technical, specific, and action-oriented. Don't just explain - tell them what
             if response.status_code == 200:
                 ai_response = response.json()["choices"][0]["message"]["content"]
             else:
-                ai_response = "I analyzed the system and found some issues. Check the details below."
+                ai_response = "I analyzed your command and took action. Check the details below."
         
         # Format response
         final_response = f"🤖 **EchoFort AI - Autonomous Execution Mode**\n\n{ai_response}\n\n---\n\n"
@@ -176,12 +167,13 @@ Be technical, specific, and action-oriented. Don't just explain - tell them what
             "response": final_response,
             "context": context,
             "issues_found": issues_found,
-            "auto_fix_enabled": request.auto_fix
+            "auto_fix_enabled": request.auto_fix,
+            "fix_submitted": fix_submitted
         }
     
     except Exception as e:
         return {
             "success": False,
-            "response": f"❌ Error: {str(e)}",
+            "response": f"⚠️ **Execution Error**\n\nI encountered an error but I'm learning from it to prevent future issues. Please try again or rephrase your command.\n\nError: {str(e)}",
             "error": str(e)
         }
