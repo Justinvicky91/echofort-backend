@@ -34,12 +34,13 @@ def pg_dsn_for_psycopg(raw: str) -> str:
 def make_app():
     s = get_settings()
     from app.admin import threat_intel, analytics, data_core
-app = FastAPI(title="EchoFort API", version="1.0.0")
+    
+    app = FastAPI(title="EchoFort API", version="1.0.0")
 
-# Include routers
-app.include_router(threat_intel.router)
-app.include_router(analytics.router)
-app.include_router(data_core.router)
+    # Include routers
+    app.include_router(threat_intel.router)
+    app.include_router(analytics.router)
+    app.include_router(data_core.router)
 
     # -------------------------------------------------------------
     # CORS
