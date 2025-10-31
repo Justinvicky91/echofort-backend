@@ -251,8 +251,10 @@ When asked about features, you CHECK THE CODE and DATABASE, not make assumptions
 async def store_learning(entry: LearningEntry) -> bool:
     """Store learned information in database with approval workflow"""
     try:
-        from app.deps import get_db_engine
-        engine = get_db_engine()
+        if not ASYNC_DATABASE_URL:
+            return False
+        
+        engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True)
         
         async with engine.begin() as conn:
             # Create ai_learning table if not exists
@@ -291,8 +293,10 @@ async def store_learning(entry: LearningEntry) -> bool:
 async def get_pending_approvals() -> List[Dict[str, Any]]:
     """Get learning entries pending approval"""
     try:
-        from app.deps import get_db_engine
-        engine = get_db_engine()
+        if not ASYNC_DATABASE_URL:
+            return []
+        
+        engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True)
         
         async with engine.begin() as conn:
             result = await conn.execute(text("""
@@ -443,8 +447,10 @@ async def get_learning_approvals():
 async def approve_learning(entry_id: int):
     """Approve a learning entry"""
     try:
-        from app.deps import get_db_engine
-        engine = get_db_engine()
+        if not ASYNC_DATABASE_URL:
+            return {"success": False, "error": "Database not configured"}
+        
+        engine = create_async_engine(ASYNC_DATABASE_URL, pool_pre_ping=True)
         
         async with engine.begin() as conn:
             await conn.execute(text("""
