@@ -60,8 +60,8 @@ async def get_real_platform_context() -> Dict[str, Any]:
             sub_result = await conn.execute(text("SELECT COUNT(*) FROM subscriptions WHERE status = 'active'"))
             active_subscriptions = sub_result.scalar() or 0
             
-            # Get real revenue
-            rev_result = await conn.execute(text("SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE status = 'completed'"))
+            # Get real revenue from subscriptions
+            rev_result = await conn.execute(text("SELECT COALESCE(SUM(amount), 0) FROM subscriptions WHERE status = 'active'"))
             total_revenue = float(rev_result.scalar() or 0)
             
             # Get real threats blocked
