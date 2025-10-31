@@ -16,10 +16,10 @@ CREATE TABLE IF NOT EXISTS employees (
     created_by INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE INDEX idx_employees_username ON employees(username);
-CREATE INDEX idx_employees_role ON employees(role);
-CREATE INDEX idx_employees_active ON employees(active);
-CREATE INDEX idx_employees_super_admin ON employees(is_super_admin);
+CREATE INDEX IF NOT EXISTS idx_employees_username ON employees(username);
+CREATE INDEX IF NOT EXISTS idx_employees_role ON employees(role);
+CREATE INDEX IF NOT EXISTS idx_employees_active ON employees(active);
+CREATE INDEX IF NOT EXISTS idx_employees_super_admin ON employees(is_super_admin);
 
 -- Add comments
 COMMENT ON TABLE employees IS 'Employee accounts with role-based access';
