@@ -31,8 +31,9 @@ CREATE TABLE IF NOT EXISTS admin_audit_log (
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_payment_gateways_enabled ON payment_gateways(enabled);
 CREATE INDEX IF NOT EXISTS idx_payment_gateways_priority ON payment_gateways(priority);
-CREATE INDEX IF NOT EXISTS idx_payment_gateways_regions ON payment_gateways USING GIN(supported_regions);
-CREATE INDEX IF NOT EXISTS idx_payment_gateways_currencies ON payment_gateways USING GIN(supported_currencies);
+-- CREATE INDEX IF NOT EXISTS idx_payment_gateways_regions ON payment_gateways USING GIN(supported_regions);
+-- CREATE INDEX IF NOT EXISTS idx_payment_gateways_currencies ON payment_gateways USING GIN(supported_currencies);
+-- Note: GIN indexes commented out due to operator class issues. Can be added manually if needed.
 CREATE INDEX IF NOT EXISTS idx_admin_audit_log_admin ON admin_audit_log(admin_id);
 CREATE INDEX IF NOT EXISTS idx_admin_audit_log_action ON admin_audit_log(action);
 
