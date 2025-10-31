@@ -70,7 +70,7 @@ async def analyze_and_propose_fix(issue_description: str, context: Dict) -> Opti
     return None
 
 
-@router.post("/chat-with-execution")
+@router.post("/chat")
 async def chat_with_execution(request: ExecuteCommand):
     """
     Chat with AI that can actually execute fixes
