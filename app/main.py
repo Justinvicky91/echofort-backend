@@ -11,6 +11,8 @@ from .admin import employee_exemptions
 # NEW IMPORTS - Add after existing imports
 from .admin import payroll, profit_loss, infra_costs
 from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports, email_webhook_v2 as email_webhook
+# NEW FEATURE MODULES
+from . import email_phishing, content_filter, refund_processing
 from pathlib import Path
 import os
 import psycopg
@@ -172,6 +174,10 @@ def make_app():
     app.include_router(test_users.router)
     app.include_router(email_webhook.router)
     app.include_router(debug_payment.router)
+    # NEW FEATURE ROUTERS - Complete missing features
+    app.include_router(email_phishing.router)
+    app.include_router(content_filter.router)
+    app.include_router(refund_processing.router)
 
 
 
