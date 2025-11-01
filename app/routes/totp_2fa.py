@@ -67,8 +67,6 @@ async def setup_totp(payload: dict, request: Request):
             WHERE id = :id
         """), {"secret": secret, "id": emp_id})
         
-        await db.commit()
-        
         print(f"✅ TOTP setup initiated for: {emp_username}")
         
         return {
@@ -133,8 +131,6 @@ async def enable_totp(payload: dict, request: Request):
             SET totp_enabled = true
             WHERE id = :id
         """), {"id": emp_id})
-        
-        await db.commit()
         
         print(f"✅ TOTP enabled for: {emp_username}")
         
@@ -268,8 +264,6 @@ async def disable_totp(payload: dict, request: Request):
             SET totp_enabled = false, totp_secret = NULL
             WHERE id = :id
         """), {"id": emp_id})
-        
-        await db.commit()
         
         print(f"✅ TOTP disabled for: {emp_username}")
         
