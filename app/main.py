@@ -53,6 +53,7 @@ def make_app():
     # CORS
     # -------------------------------------------------------------
     origins = [o.strip() for o in s.ALLOW_ORIGINS.split(",")] if s.ALLOW_ORIGINS else ["*"]
+    print(f"CORS allow_origins configured: {origins}")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
