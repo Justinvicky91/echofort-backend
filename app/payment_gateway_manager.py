@@ -109,7 +109,7 @@ async def configure_payment_gateway(
                 "currencies": json.dumps(config.supported_currencies),
                 "regions": json.dumps(config.supported_regions),
                 "priority": config.priority,
-                "admin_id": current_user["id"]
+                "admin_id": current_user.get("id") or current_user.get("employee_id") or current_user.get("sub")
             })
             
             action = "updated"
@@ -137,7 +137,7 @@ async def configure_payment_gateway(
                 "currencies": json.dumps(config.supported_currencies),
                 "regions": json.dumps(config.supported_regions),
                 "priority": config.priority,
-                "admin_id": current_user["id"]
+                "admin_id": current_user.get("id") or current_user.get("employee_id") or current_user.get("sub")
             })
             
             action = "configured"
@@ -150,7 +150,7 @@ async def configure_payment_gateway(
                 :admin_id, :action, :details, NOW()
             )
         """), {
-            "admin_id": current_user["id"],
+            "admin_id": current_user.get("id") or current_user.get("employee_id") or current_user.get("sub"),
             "action": f"payment_gateway_{action}",
             "details": json.dumps({
                 "gateway": config.gateway_name,
@@ -309,7 +309,7 @@ async def toggle_gateway(
                 :admin_id, :action, :details, NOW()
             )
         """), {
-            "admin_id": current_user["id"],
+            "admin_id": current_user.get("id") or current_user.get("employee_id") or current_user.get("sub"),
             "action": "payment_gateway_toggled",
             "details": json.dumps({
                 "gateway": gateway_name,
@@ -412,7 +412,7 @@ async def delete_gateway(
                 :admin_id, :action, :details, NOW()
             )
         """), {
-            "admin_id": current_user["id"],
+            "admin_id": current_user.get("id") or current_user.get("employee_id") or current_user.get("sub"),
             "action": "payment_gateway_deleted",
             "details": json.dumps({"gateway": gateway_name})
         })
