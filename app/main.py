@@ -6,7 +6,7 @@ from .admin import execute_sql
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import create_engine, text
-from . import payment_gateway, ai_assistant, invoice_generator, ai_assistant_enhanced, ai_assistant_enhanced_v2, ai_assistant_intelligent, ai_assistant_autonomous, ai_assistant_with_execution, ai_execution_engine, public_content, pending_actions_proxy
+from . import payment_gateway, ai_assistant, invoice_generator, ai_assistant_enhanced, ai_assistant_enhanced_v2, ai_assistant_intelligent, ai_assistant_autonomous, ai_assistant_with_execution, ai_execution_engine, public_content, pending_actions_proxy, pending_actions_ssr
 from .admin import employee_exemptions
 # NEW IMPORTS - Add after existing imports
 from .admin import payroll, profit_loss, infra_costs
@@ -48,6 +48,7 @@ def make_app():
     # Include AI execution engine
     app.include_router(ai_execution_engine.router)
     app.include_router(pending_actions_proxy.router)
+    app.include_router(pending_actions_ssr.router)
     app.include_router(ai_assistant_with_execution.router)
 
     # -------------------------------------------------------------
