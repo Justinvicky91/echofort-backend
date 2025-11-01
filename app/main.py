@@ -12,7 +12,7 @@ from .admin import employee_exemptions
 from .admin import payroll, profit_loss, infra_costs
 from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports, email_webhook_v2 as email_webhook
 # NEW FEATURE MODULES
-from . import email_phishing, content_filter, refund_processing, mobile_caller_id, mobile_sms_detection, mobile_url_checker, mobile_push_notifications, mobile_user_profile, mobile_emergency
+from . import email_phishing, content_filter, refund_processing, mobile_caller_id, mobile_sms_detection, mobile_url_checker, mobile_push_notifications, mobile_user_profile, mobile_emergency, mobile_realtime_call
 from pathlib import Path
 import os
 import psycopg
@@ -88,7 +88,7 @@ def make_app():
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql"]:
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
@@ -184,6 +184,7 @@ def make_app():
     app.include_router(mobile_push_notifications.router)
     app.include_router(mobile_user_profile.router)
     app.include_router(mobile_emergency.router)
+    app.include_router(mobile_realtime_call.router)
 
 
 
@@ -203,7 +204,7 @@ def make_app():
         try:
             with psycopg.connect(dsn) as conn:
                 with conn.cursor() as cur:
-                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql"]:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql"]:
                         sql = (mdir / fname).read_text(encoding="utf-8")
                         cur.execute(sql)
                 conn.commit()
