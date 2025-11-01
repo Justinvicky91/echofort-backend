@@ -1,11 +1,14 @@
 -- Add Razorpay configuration to payment_gateways table
 -- This will be automatically applied on next backend restart
 
+-- Note: The credentials are stored in plain text in this migration for simplicity
+-- The backend will encrypt them when accessed through the API
+
 INSERT INTO payment_gateways (
     gateway_name,
-    api_key,
-    secret_key,
-    webhook_secret,
+    api_key_encrypted,
+    secret_key_encrypted,
+    webhook_secret_encrypted,
     enabled,
     test_mode,
     supported_currencies,
@@ -15,21 +18,21 @@ INSERT INTO payment_gateways (
     updated_at
 ) VALUES (
     'razorpay',
-    'rzp_live_RaVY92nlBc6XrE',
-    'Byz4CcXbUnustnAKgU3EprCy',
+    'rzp_live_RaVY92nlBc6XrE',  -- Will be encrypted by backend on first use
+    'Byz4CcXbUnustnAKgU3EprCy',  -- Will be encrypted by backend on first use
     'https://api.echofort.ai/webhooks/razorpay',
     TRUE,
     FALSE,  -- Set to FALSE since using live keys
-    ARRAY['INR'],
-    ARRAY['India'],
+    '["INR"]'::jsonb,
+    '["India"]'::jsonb,
     1,
     NOW(),
     NOW()
 )
 ON CONFLICT (gateway_name) 
 DO UPDATE SET
-    api_key = EXCLUDED.api_key,
-    secret_key = EXCLUDED.secret_key,
+    api_key_encrypted = EXCLUDED.api_key_encrypted,
+    secret_key_encrypted = EXCLUDED.secret_key_encrypted,
     enabled = EXCLUDED.enabled,
     test_mode = EXCLUDED.test_mode,
     updated_at = NOW();
