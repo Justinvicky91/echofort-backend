@@ -166,6 +166,20 @@ async def analyze_command_and_generate_fix(command: str, context: Dict, conn=Non
             audit_issues = await perform_comprehensive_platform_audit(conn)
             fixes.extend(audit_issues)
     
+    # Check if command is about creating marketing campaign
+    elif any(keyword in command_lower for keyword in ['marketing campaign', 'campaign', 'marketing']):
+        fixes.append({
+            "action_type": "marketing_campaign",
+            "description": f"Create marketing campaign: {command}",
+            "risk_level": "low",
+            "code_changes": {
+                "campaign_name": "AI-Generated Campaign",
+                "command": command,
+                "target_audience": "Extracted from command",
+                "platform": "Multi-channel"
+            }
+        })
+    
     # Check if command is about adding status column to scam_cases
     elif ("status" in command_lower and "scam_cases" in command_lower) or \
          ("scam" in command_lower and "column" in command_lower):
