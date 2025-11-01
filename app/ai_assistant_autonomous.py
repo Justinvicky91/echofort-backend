@@ -349,6 +349,64 @@ async def autonomous_chat(request: ChatRequest):
         ai_response = ""
         
         # INTELLIGENT COMMAND DETECTION
+        pending_action_created = None
+        
+        # Detect actionable commands that require approval
+        if any(word in user_message for word in ['create marketing campaign', 'marketing campaign', 'campaign']):
+            # Generate marketing campaign action
+            campaign_action = PendingAction(
+                action_type="marketing_campaign",
+                description=f"Create marketing campaign based on: {request.message}",
+                risk_level="low",
+                code_changes={
+                    "campaign_name": "AI-Generated Campaign",
+                    "target_audience": "Extracted from command",
+                    "command": request.message,
+                    "platform_context": context
+                }
+            )
+            try:
+                result = await propose_action(campaign_action)
+                pending_action_created = result
+            except Exception as e:
+                print(f"Error creating pending action: {e}")
+        
+        elif any(word in user_message for word in ['fix bug', 'fix any bug', 'fix issue', 'repair']):
+            # Generate bug fix action
+            fix_action = PendingAction(
+                action_type="bug_fix",
+                description=f"Fix bugs based on: {request.message}",
+                risk_level="medium",
+                code_changes={
+                    "fix_type": "AI-Generated Fix",
+                    "target_system": "Extracted from command",
+                    "command": request.message,
+                    "platform_context": context
+                }
+            )
+            try:
+                result = await propose_action(fix_action)
+                pending_action_created = result
+            except Exception as e:
+                print(f"Error creating pending action: {e}")
+        
+        elif any(word in user_message for word in ['update', 'modify', 'change', 'improve']):
+            # Generate system update action
+            update_action = PendingAction(
+                action_type="system_update",
+                description=f"System update based on: {request.message}",
+                risk_level="medium",
+                code_changes={
+                    "update_type": "AI-Generated Update",
+                    "command": request.message,
+                    "platform_context": context
+                }
+            )
+            try:
+                result = await propose_action(update_action)
+                pending_action_created = result
+            except Exception as e:
+                print(f"Error creating pending action: {e}")
         
         # Check homepage features
         if any(word in user_message for word in ['homepage', 'sidebar', 'scam alerts', 'youtube', 'video']):
@@ -408,12 +466,19 @@ BE SPECIFIC about what exists and what doesn't based on actual checks.
         await store_learning(learning_entry)
         
         # Format final response
-        final_response = f"✅ **Command Executed with Real Data**\n\n{ai_response}\n\n---\n\n"
-        final_response += f"**Technical Details:**\n"
-        final_response += f"- Database Queries: {len(context)} metrics fetched\n"
-        final_response += f"- Code Inspections: {len(technical_findings)} checks performed\n"
-        final_response += f"- AI Provider: OpenAI GPT-4\n"
-        final_response += f"- Learning Stored: Yes (Pending Approval)\n"
+        final_response = f"🤖 **EchoFort AI - Autonomous Execution Mode**\n\n{ai_response}\n\n---\n\n"
+        
+        if pending_action_created:
+            final_response += f"\n✅ **Action Created for Approval**\n"
+            final_response += f"- Action ID: #{pending_action_created.get('action_id')}\n"
+            final_response += f"- Type: {pending_action_created.get('action_type')}\n"
+            final_response += f"- Status: Pending Super Admin Approval\n"
+            final_response += f"\n📋 Please check **AI Pending Actions** section to review and approve this action.\n\n---\n\n"
+        
+        final_response += f"**System Status:**\n"
+        final_response += f"- Users: {context.get('total_users', 0)}\n"
+        final_response += f"- Active Subscriptions: {context.get('active_subscriptions', 0)}\n"
+        final_response += f"- Scam Cases: {context.get('threats_blocked', 0)}\n"
         
         return {
             "success": True,
@@ -423,6 +488,8 @@ BE SPECIFIC about what exists and what doesn't based on actual checks.
             "technical_findings": technical_findings,
             "context": context,
             "learning_stored": True,
+            "pending_action_created": pending_action_created is not None,
+            "action_id": pending_action_created.get('action_id') if pending_action_created else None,
             "timestamp": datetime.now().isoformat()
         }
         
