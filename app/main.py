@@ -52,8 +52,7 @@ def make_app():
     # -------------------------------------------------------------
     # CORS
     # -------------------------------------------------------------
-    allow_origins_str = os.getenv("ALLOW_ORIGINS", "*")
-    origins = [origin.strip() for origin in allow_origins_str.split(",")]
+    origins = ["https://echofort.ai"]
     print(f"CORS allow_origins configured: {origins}")
     print(f"CORS allow_origins configured: {origins}")
     app.add_middleware(
