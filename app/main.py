@@ -88,7 +88,7 @@ def make_app():
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql"]:
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
@@ -197,7 +197,7 @@ def make_app():
         try:
             with psycopg.connect(dsn) as conn:
                 with conn.cursor() as cur:
-                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql"]:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql"]:
                         sql = (mdir / fname).read_text(encoding="utf-8")
                         cur.execute(sql)
                 conn.commit()
@@ -250,8 +250,11 @@ app.include_router(fixed_auth.router)
 app.include_router(password.router)
 
 # Register TOTP 2FA router (Google Authenticator)
-from .routes import totp_2fa
+from .routes import totp_2fa, system_settings
 app.include_router(totp_2fa.router)
+
+# Register System Settings router (WhatsApp Chat Toggle)
+app.include_router(system_settings.router)
 
 # Register employee management router
 app.include_router(emp_mgmt.router)
