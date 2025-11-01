@@ -61,6 +61,8 @@ def make_app():
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
+        max_age=3600,
     )
 
     # ------------------------------------------------------------
