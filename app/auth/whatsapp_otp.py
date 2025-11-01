@@ -7,7 +7,14 @@ import os
 import random
 import string
 from datetime import datetime, timedelta
-from twilio.rest import Client
+
+# Try to import Twilio, but make it optional for DEV mode
+try:
+    from twilio.rest import Client
+    TWILIO_AVAILABLE = True
+except ImportError:
+    TWILIO_AVAILABLE = False
+    print("⚠️ Twilio not installed - WhatsApp OTP will run in DEV mode")
 
 # Twilio Configuration
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
@@ -46,7 +53,7 @@ def send_whatsapp_otp(email: str) -> dict:
         }
         
         # Initialize Twilio client
-        if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
+        if not TWILIO_AVAILABLE or not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
             # Fallback: Log OTP to console (development mode)
             print(f"[DEV MODE] WhatsApp OTP for {email}: {otp}")
             return {
