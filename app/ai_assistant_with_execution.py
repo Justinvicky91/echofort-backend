@@ -30,16 +30,146 @@ class ExecuteCommand(BaseModel):
     auto_fix: bool = True  # If True, AI will propose fixes automatically
 
 
-async def analyze_command_and_generate_fix(command: str, context: Dict) -> Optional[Dict]:
+async def perform_comprehensive_platform_audit(conn) -> List[Dict]:
     """
-    Analyze user command and generate appropriate fix
+    Perform a comprehensive audit of the EchoFort platform
+    Returns list of issues found with proposed fixes
+    """
+    issues = []
+    
+    # Check 1: Verify critical tables exist
+    critical_tables = ['users', 'subscriptions', 'scam_cases', 'payments', 'employees', 'ai_pending_actions']
+    for table in critical_tables:
+        try:
+            await conn.execute(text(f"SELECT 1 FROM {table} LIMIT 1"))
+        except Exception as e:
+            issues.append({
+                "action_type": "sql_execution",
+                "description": f"Critical table '{table}' is missing or inaccessible",
+                "risk_level": "high",
+                "sql_command": f"-- Table {table} needs to be created. Check migrations.",
+                "affected_tables": [table],
+                "estimated_impact": f"High - {table} table is critical for platform operation",
+                "rollback_command": f"-- No rollback - table creation required"
+            })
+    
+    # Check 2: Verify scam_cases has status column
+    try:
+        result = await conn.execute(text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'scam_cases' AND column_name = 'status'
+        """))
+        if not result.fetchone():
+            issues.append({
+                "action_type": "sql_execution",
+                "description": "Add missing 'status' column to scam_cases table for case management",
+                "risk_level": "medium",
+                "sql_command": """
+                    ALTER TABLE scam_cases 
+                    ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'open';
+                    
+                    COMMENT ON COLUMN scam_cases.status IS 'Status: open, investigating, resolved, closed';
+                """,
+                "affected_tables": ["scam_cases"],
+                "estimated_impact": "Low - adds optional column with default value",
+                "rollback_command": "ALTER TABLE scam_cases DROP COLUMN IF EXISTS status;"
+            })
+    except Exception as e:
+        pass
+    
+    # Check 3: Verify users table has proper indexes
+    try:
+        result = await conn.execute(text("""
+            SELECT indexname 
+            FROM pg_indexes 
+            WHERE tablename = 'users' AND indexname = 'idx_users_email'
+        """))
+        if not result.fetchone():
+            issues.append({
+                "action_type": "sql_execution",
+                "description": "Add missing email index to users table for performance",
+                "risk_level": "low",
+                "sql_command": """
+                    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+                """,
+                "affected_tables": ["users"],
+                "estimated_impact": "Low - improves query performance",
+                "rollback_command": "DROP INDEX IF EXISTS idx_users_email;"
+            })
+    except Exception as e:
+        pass
+    
+    # Check 4: Verify payment gateway configuration
+    try:
+        result = await conn.execute(text("""
+            SELECT COUNT(*) FROM payment_gateways WHERE is_active = true
+        """))
+        active_gateways = result.scalar()
+        if active_gateways == 0:
+            issues.append({
+                "action_type": "configuration",
+                "description": "No active payment gateways configured - users cannot make payments",
+                "risk_level": "critical",
+                "sql_command": """
+                    -- Enable at least one payment gateway (Razorpay, Stripe, or PayPal)
+                    UPDATE payment_gateways 
+                    SET is_active = true 
+                    WHERE gateway_name = 'razorpay' 
+                    LIMIT 1;
+                """,
+                "affected_tables": ["payment_gateways"],
+                "estimated_impact": "High - enables payment processing",
+                "rollback_command": "UPDATE payment_gateways SET is_active = false WHERE gateway_name = 'razorpay';"
+            })
+    except Exception as e:
+        pass
+    
+    # Check 5: Verify subscription plans exist
+    try:
+        result = await conn.execute(text("SELECT COUNT(*) FROM subscription_plans"))
+        plan_count = result.scalar()
+        if plan_count == 0:
+            issues.append({
+                "action_type": "data_insertion",
+                "description": "No subscription plans configured - users cannot subscribe",
+                "risk_level": "critical",
+                "sql_command": """
+                    -- Insert default subscription plans
+                    INSERT INTO subscription_plans (name, price, duration_days, features, is_active)
+                    VALUES 
+                        ('Basic', 399, 30, '{"call_screening": true, "trust_factor": true}', true),
+                        ('Personal', 799, 30, '{"call_screening": true, "recording": true, "image_scan": true}', true),
+                        ('Family', 1499, 30, '{"call_screening": true, "recording": true, "gps_tracking": true, "family_members": 4}', true);
+                """,
+                "affected_tables": ["subscription_plans"],
+                "estimated_impact": "High - enables subscription functionality",
+                "rollback_command": "DELETE FROM subscription_plans WHERE name IN ('Basic', 'Personal', 'Family');"
+            })
+    except Exception as e:
+        pass
+    
+    return issues
+
+
+async def analyze_command_and_generate_fix(command: str, context: Dict, conn=None) -> List[Dict]:
+    """
+    Analyze user command and generate appropriate fixes
     """
     command_lower = command.lower()
+    fixes = []
+    
+    # Check if command is requesting comprehensive platform audit
+    if any(keyword in command_lower for keyword in ['check', 'audit', 'analyze', 'inspect', 'review', 'full platform']):
+        if conn:
+            # Perform comprehensive audit
+            audit_issues = await perform_comprehensive_platform_audit(conn)
+            fixes.extend(audit_issues)
     
     # Check if command is about adding status column to scam_cases
-    if ("status" in command_lower and "scam_cases" in command_lower) or \
-       ("scam" in command_lower and "column" in command_lower):
-        return {
+    elif ("status" in command_lower and "scam_cases" in command_lower) or \
+         ("scam" in command_lower and "column" in command_lower):
+        fixes.append({
             "action_type": "sql_execution",
             "description": "Add missing 'status' column to scam_cases table",
             "risk_level": "medium",
@@ -52,11 +182,9 @@ async def analyze_command_and_generate_fix(command: str, context: Dict) -> Optio
             "affected_tables": ["scam_cases"],
             "estimated_impact": "Low - adds optional column with default value",
             "rollback_command": "ALTER TABLE scam_cases DROP COLUMN IF EXISTS status;"
-        }
+        })
     
-    # Add more command patterns here as needed
-    
-    return None
+    return fixes
 
 
 @router.post("/chat")
@@ -70,7 +198,7 @@ async def chat_with_execution(request: ExecuteCommand):
         
         context = {}
         issues_found = []
-        fix_submitted = False
+        fixes_submitted = []
         
         async with engine.begin() as conn:
             # Try to get user count
@@ -93,18 +221,22 @@ async def chat_with_execution(request: ExecuteCommand):
                 context["total_scam_cases"] = result.scalar()
             except Exception as e:
                 issues_found.append(f"Scam cases table issue: {str(e)}")
+            
+            # Analyze user command and generate fixes if auto_fix is enabled
+            if request.auto_fix:
+                proposed_fixes = await analyze_command_and_generate_fix(request.command, context, conn)
+                
+                # Submit each fix for approval
+                for fix in proposed_fixes:
+                    try:
+                        action = PendingAction(**fix)
+                        result = await propose_action(action)
+                        fixes_submitted.append(result['message'])
+                        issues_found.append(f"✅ {fix['description']}")
+                    except Exception as e:
+                        issues_found.append(f"❌ Failed to submit fix: {str(e)}")
         
         await engine.dispose()
-        
-        # Analyze user command and generate fix if auto_fix is enabled
-        if request.auto_fix:
-            proposed_fix = await analyze_command_and_generate_fix(request.command, context)
-            if proposed_fix:
-                # Submit the fix for approval
-                action = PendingAction(**proposed_fix)
-                result = await propose_action(action)
-                issues_found.append(f"✅ Fix submitted to AI Pending Actions: {result['message']}")
-                fix_submitted = True
         
         # Call OpenAI for intelligent response
         prompt = f"""
@@ -115,13 +247,15 @@ User Command: {request.command}
 Real Platform Data:
 {json.dumps(context, indent=2)}
 
-Fix Status: {"Fix has been submitted to AI Pending Actions for approval" if fix_submitted else "No fix was generated"}
+Fixes Submitted: {len(fixes_submitted)}
+{chr(10).join(fixes_submitted) if fixes_submitted else "No fixes were generated"}
 
 Based on the data above:
 1. Acknowledge the user's command
-2. If a fix was submitted, explain what the fix does in detail
-3. Tell the user to check "AI Pending Actions" in the Super Admin dashboard to review and approve the fix
+2. If fixes were submitted, explain what each fix does in detail
+3. Tell the user to check "AI Pending Actions" in the Super Admin dashboard to review and approve the fixes
 4. Provide system status information
+5. If no fixes were found, explain that the platform is operating normally
 
 Be technical, specific, and action-oriented. Don't just explain - tell them what you're DOING to fix it.
 """
@@ -158,7 +292,7 @@ Be technical, specific, and action-oriented. Don't just explain - tell them what
         final_response += f"- Scam Cases: {context.get('total_scam_cases', 'N/A')}\n\n"
         
         if issues_found:
-            final_response += f"**Actions Taken:**\n"
+            final_response += f"**Issues Found & Actions Taken:**\n"
             for issue in issues_found:
                 final_response += f"- {issue}\n"
         
@@ -168,7 +302,7 @@ Be technical, specific, and action-oriented. Don't just explain - tell them what
             "context": context,
             "issues_found": issues_found,
             "auto_fix_enabled": request.auto_fix,
-            "fix_submitted": fix_submitted
+            "fixes_submitted": len(fixes_submitted)
         }
     
     except Exception as e:
