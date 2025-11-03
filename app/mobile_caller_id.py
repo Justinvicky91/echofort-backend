@@ -9,6 +9,7 @@ from typing import Optional, List
 from datetime import datetime
 from sqlalchemy import text
 from .utils import get_current_user
+from .deps import get_db
 
 router = APIRouter(prefix="/api/mobile/caller-id", tags=["Mobile Caller ID"])
 

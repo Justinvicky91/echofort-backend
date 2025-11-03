@@ -57,3 +57,11 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+# Database dependency for FastAPI endpoints
+from fastapi import Request
+
+async def get_db(request: Request):
+    """Get database connection from app state"""
+    return request.app.state.db

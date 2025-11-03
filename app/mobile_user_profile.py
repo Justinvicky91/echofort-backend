@@ -9,6 +9,7 @@ from typing import Optional
 from datetime import datetime, date
 from sqlalchemy import text
 from .utils import get_current_user
+from .deps import get_db
 import base64
 
 router = APIRouter(prefix="/api/mobile/profile", tags=["Mobile User Profile"])

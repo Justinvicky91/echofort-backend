@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime, time
 from sqlalchemy import text
 from .utils import get_current_user
+from .deps import get_db
 
 router = APIRouter(prefix="/api/mobile/notifications", tags=["Mobile Push Notifications"])
 

@@ -10,6 +10,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 from sqlalchemy import text
 from .utils import get_current_user
+from .deps import get_db
 import re
 
 router = APIRouter(prefix="/api/mobile/web", tags=["Mobile URL Checker"])

@@ -2,11 +2,12 @@
 Health Check and System Status Endpoints
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from datetime import datetime
 import psutil
 import os
-# Database dependency removed - not needed for basic health check
+from sqlalchemy import text
+from .deps import get_db
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
@@ -23,11 +24,20 @@ async def health_check():
 
 
 @router.get("/detailed")
-async def detailed_health_check():
+async def detailed_health_check(request):
     """Detailed health check with system metrics"""
     try:
-        # Database status check removed for now
-        db_status = "not_checked"
+        # Check database connection
+        db_status = "healthy"
+        try:
+            db = await get_db(request)
+            result = await db.execute(text("SELECT 1"))
+            if result:
+                db_status = "healthy"
+            else:
+                db_status = "unhealthy"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
         
         # System metrics
         cpu_percent = psutil.cpu_percent(interval=0.1)
