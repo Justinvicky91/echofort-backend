@@ -105,11 +105,11 @@ async def mobile_register(payload: RegisterRequest, request: Request):
         # Hash password
         password_hash = bcrypt.hashpw(payload.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
-        # Create user record
+        # Create user record (identity = email for mobile users)
         result = (await db.execute(text("""
             INSERT INTO users 
-            (username, email, password_hash, phone_number, active, created_at, updated_at)
-            VALUES (:username, :email, :password_hash, :phone, true, NOW(), NOW())
+            (identity, username, email, password_hash, phone_number, active, created_at, updated_at)
+            VALUES (:email, :username, :email, :password_hash, :phone, true, NOW(), NOW())
             RETURNING id, username, email, phone_number
         """), {
             "username": payload.username,
