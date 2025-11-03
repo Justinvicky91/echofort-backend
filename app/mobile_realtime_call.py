@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from sqlalchemy import text
-from .deps import get_db, get_current_user
+from .utils import get_current_user
 
 router = APIRouter(prefix="/api/mobile/realtime-call", tags=["Mobile Real-Time Call"])
 

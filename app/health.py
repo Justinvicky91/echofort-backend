@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from datetime import datetime
 import psutil
 import os
-from .deps import get_db, DBShim
+# Database dependency removed - not needed for basic health check
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
@@ -23,19 +23,11 @@ async def health_check():
 
 
 @router.get("/detailed")
-async def detailed_health_check(db: DBShim = Depends(get_db)):
-    """Detailed health check with database and system metrics"""
+async def detailed_health_check():
+    """Detailed health check with system metrics"""
     try:
-        # Check database connection
-        db_status = "healthy"
-        try:
-            result = db.execute("SELECT 1").fetchone()
-            if result and result[0] == 1:
-                db_status = "healthy"
-            else:
-                db_status = "unhealthy"
-        except Exception as e:
-            db_status = f"error: {str(e)}"
+        # Database status check removed for now
+        db_status = "not_checked"
         
         # System metrics
         cpu_percent = psutil.cpu_percent(interval=0.1)

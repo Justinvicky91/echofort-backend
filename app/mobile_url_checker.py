@@ -9,7 +9,7 @@ from typing import Optional
 from datetime import datetime
 from urllib.parse import urlparse
 from sqlalchemy import text
-from .deps import get_db, get_current_user
+from .utils import get_current_user
 import re
 
 router = APIRouter(prefix="/api/mobile/web", tags=["Mobile URL Checker"])

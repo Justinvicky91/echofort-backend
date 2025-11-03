@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional
 from datetime import datetime, date
 from sqlalchemy import text
-from .deps import get_db, get_current_user
+from .utils import get_current_user
 import base64
 
 router = APIRouter(prefix="/api/mobile/profile", tags=["Mobile User Profile"])
