@@ -303,6 +303,10 @@ app.include_router(super_admin_vault.router)
 from .admin import customer_exemptions
 app.include_router(customer_exemptions.router)
 
+# Platform Status Monitoring (Super Admin)
+from .admin import platform_status
+app.include_router(platform_status.router)
+
 # Super Admin Initialization (One-time use)
 from .admin import initialize_super_admin, dashboard_stats, service_integrations
 app.include_router(initialize_super_admin.router, prefix="/auth", tags=["Super Admin Init"])
