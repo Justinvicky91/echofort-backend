@@ -24,11 +24,10 @@ router = APIRouter(prefix="/billing", tags=["Billing"])
 
 # Business details
 BUSINESS_NAME = "EchoFort AI Private Limited"
-BUSINESS_GSTIN = "29AABCE1234F1Z5"  # Replace with actual GSTIN
+BUSINESS_GSTIN = "33AMTPV8141Q1ZY"  # EchoFort AI Private Limited
 BUSINESS_ADDRESS = """
 EchoFort AI Private Limited
-123 Tech Park, Whitefield
-Bangalore, Karnataka 560066
+Chennai, Tamil Nadu
 India
 """
 BUSINESS_EMAIL = "billing@echofort.ai"
