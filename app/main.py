@@ -6,7 +6,7 @@ from .admin import execute_sql
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import create_engine, text
-from . import payment_gateway, ai_assistant, invoice_generator, ai_assistant_enhanced, ai_assistant_enhanced_v2, ai_assistant_intelligent, ai_assistant_autonomous, ai_assistant_with_execution, ai_execution_engine, public_content, pending_actions_proxy, pending_actions_ssr
+from . import payment_gateway, ai_assistant, ai_assistant_enhanced, ai_assistant_enhanced_v2, ai_assistant_intelligent, ai_assistant_autonomous, ai_assistant_with_execution, ai_execution_engine, public_content, pending_actions_proxy, pending_actions_ssr
 from .admin import employee_exemptions
 # NEW IMPORTS - Add after existing imports
 from .admin import payroll, profit_loss, infra_costs
@@ -21,7 +21,7 @@ import psycopg
 from .deps import get_settings
 from .auth import otp, device, password, reset_admin_password, debug_employees
 from .ai import voice, image
-from .billing import razorpay_webhooks, stripe_webhooks
+from .billing import razorpay_webhooks, stripe_webhooks, invoice_generator
 from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv
 from . import social
 
