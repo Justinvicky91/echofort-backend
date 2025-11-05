@@ -319,8 +319,8 @@ app.include_router(reset_admin_password.router)
 app.include_router(debug_employees.router)
 app.include_router(dashboard_stats.router)
 app.include_router(service_integrations.router)
-    app.include_router(billing_management.router)
-    app.include_router(user_management.router, prefix="/api/admin", tags=["Super Admin - Users"])# Admin Billing Management
+app.include_router(billing_management.router)
+app.include_router(user_management.router, prefix="/api/admin", tags=["Super Admin - Users"])
 
 # Support Ticket Management (Employee Dashboard)
 from . import support_management
