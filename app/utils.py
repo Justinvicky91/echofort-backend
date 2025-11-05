@@ -42,3 +42,23 @@ def is_admin(user_id: int) -> bool:
 def get_db(request: Request):
     """Get database connection from app state"""
     return request.app.state.db
+
+def require_super_admin(authorization: str = Header(None)):
+    """Verify user is a super admin"""
+    user = get_current_user(authorization)
+    
+    # Check if user is super admin
+    settings = get_settings()
+    admin_key = getattr(settings, 'ADMIN_KEY', None)
+    
+    # For now, check if authorization matches admin key
+    if authorization and admin_key:
+        token = authorization.replace("Bearer ", "")
+        if token == admin_key:
+            return {"user_id": "super_admin", "role": "super_admin"}
+    
+    # Check if user_id is in admin list
+    if user and is_admin(user.get("user_id", 0)):
+        return user
+    
+    raise HTTPException(403, "Super admin access required")
