@@ -23,6 +23,15 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
     phone: str
+    full_name: str = None
+    address_line1: str = None
+    address_line2: str = None
+    city: str = None
+    state: str = None
+    country: str = "India"
+    pincode: str = None
+    id_type: str = None  # Aadhaar, PAN, Passport, Driving License
+    id_number: str = None
 
 
 @router.post("/login")
@@ -108,17 +117,30 @@ async def mobile_register(payload: RegisterRequest, request: Request):
         # Create user record (identity = email for mobile users)
         result = (await db.execute(text("""
             INSERT INTO users 
-            (identity, username, email, password_hash, phone_number, active, created_at, updated_at)
-            VALUES (:email, :username, :email, :password_hash, :phone, true, NOW(), NOW())
-            RETURNING id, username, email, phone_number
+            (identity, username, email, password_hash, phone_number, full_name, 
+             address_line1, address_line2, city, state, country, pincode, 
+             id_type, id_number, kyc_status, active, created_at, updated_at)
+            VALUES (:email, :username, :email, :password_hash, :phone, :full_name,
+                    :address_line1, :address_line2, :city, :state, :country, :pincode,
+                    :id_type, :id_number, 'pending', true, NOW(), NOW())
+            RETURNING id, username, email, phone_number, full_name
         """), {
             "username": payload.username,
             "email": payload.email,
             "password_hash": password_hash,
-            "phone": payload.phone
+            "phone": payload.phone,
+            "full_name": payload.full_name,
+            "address_line1": payload.address_line1,
+            "address_line2": payload.address_line2,
+            "city": payload.city,
+            "state": payload.state,
+            "country": payload.country,
+            "pincode": payload.pincode,
+            "id_type": payload.id_type,
+            "id_number": payload.id_number
         })).fetchone()
         
-        user_id, username, email, phone = result
+        user_id, username, email, phone, full_name = result
         
         return {
             "ok": True,
@@ -126,7 +148,8 @@ async def mobile_register(payload: RegisterRequest, request: Request):
             "userId": user_id,
             "username": username,
             "email": email,
-            "phone": phone
+            "phone": phone,
+            "fullName": full_name
         }
         
     except HTTPException:
