@@ -22,7 +22,7 @@ from .deps import get_settings
 from .auth import otp, device, password, reset_admin_password, debug_employees, mobile_auth
 from .ai import voice, image
 from .billing import razorpay_webhooks, stripe_webhooks, invoice_generator, refund_processing
-from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv, billing_management
+from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv, billing_management, user_management
 from . import social
 
 
@@ -319,7 +319,8 @@ app.include_router(reset_admin_password.router)
 app.include_router(debug_employees.router)
 app.include_router(dashboard_stats.router)
 app.include_router(service_integrations.router)
-app.include_router(billing_management.router)  # Admin Billing Management
+    app.include_router(billing_management.router)
+    app.include_router(user_management.router, prefix="/api/admin", tags=["Super Admin - Users"])# Admin Billing Management
 
 # Support Ticket Management (Employee Dashboard)
 from . import support_management
