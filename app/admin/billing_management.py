@@ -33,16 +33,16 @@ async def list_all_invoices(
         query = """
             SELECT 
                 i.id,
-                i.invoice_number,
+                i.invoice_id as invoice_number,
                 i.user_id,
                 u.username as customer_name,
                 u.email as customer_email,
                 i.razorpay_payment_id,
                 i.amount,
-                i.tax_amount,
-                i.total_amount,
-                i.subscription_plan,
-                i.subscription_duration,
+                0 as tax_amount,
+                i.amount as total_amount,
+                i.plan_name as subscription_plan,
+                i.subscription_id as subscription_duration,
                 i.status,
                 i.invoice_date,
                 i.created_at
@@ -149,7 +149,7 @@ async def list_all_refunds(
                 u.email as customer_email,
                 r.razorpay_payment_id,
                 r.invoice_id,
-                i.invoice_number,
+                i.invoice_id as invoice_number,
                 r.amount,
                 r.reason,
                 r.status,
@@ -365,15 +365,15 @@ async def export_invoices_csv(
         
         query = """
             SELECT 
-                i.invoice_number,
+                i.invoice_id as invoice_number,
                 i.invoice_date,
                 u.username,
                 u.email,
-                i.subscription_plan,
-                i.subscription_duration,
+                i.plan_name as subscription_plan,
+                i.subscription_id as subscription_duration,
                 i.amount,
-                i.tax_amount,
-                i.total_amount,
+                0 as tax_amount,
+                i.amount as total_amount,
                 i.status,
                 i.razorpay_payment_id
             FROM invoices i
