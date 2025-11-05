@@ -45,20 +45,23 @@ def get_db(request: Request):
 
 def require_super_admin(authorization: str = Header(None)):
     """Verify user is a super admin"""
-    user = get_current_user(authorization)
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(401, "Missing or invalid authorization header")
     
-    # Check if user is super admin
+    token = authorization.replace("Bearer ", "")
     settings = get_settings()
     admin_key = getattr(settings, 'ADMIN_KEY', None)
     
-    # For now, check if authorization matches admin key
-    if authorization and admin_key:
-        token = authorization.replace("Bearer ", "")
-        if token == admin_key:
-            return {"user_id": "super_admin", "role": "super_admin"}
+    # Check if token matches admin key first (before trying JWT decode)
+    if admin_key and token == admin_key:
+        return {"user_id": "super_admin", "role": "super_admin"}
     
-    # Check if user_id is in admin list
-    if user and is_admin(user.get("user_id", 0)):
-        return user
+    # Otherwise try to decode as JWT and check if user is admin
+    try:
+        user = get_current_user(authorization)
+        if user and is_admin(user.get("user_id", 0)):
+            return user
+    except HTTPException:
+        pass
     
     raise HTTPException(403, "Super admin access required")
