@@ -18,15 +18,13 @@ async def list_all_invoices(
     status: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
-    current_user: dict = Depends(get_current_user)
+    admin: dict = Depends(require_super_admin)
 ):
     """
     List all invoices (Super Admin only)
     Supports filtering by status and pagination
     """
     # Verify super admin
-    if not current_user.get('is_super_admin'):
-        raise HTTPException(status_code=403, detail="Super Admin access required")
     
     try:
         db = request.app.state.db
@@ -88,14 +86,12 @@ async def list_all_invoices(
 async def get_invoice_details(
     invoice_id: int,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    admin: dict = Depends(require_super_admin)
 ):
     """
     Get detailed invoice information (Super Admin only)
     """
     # Verify super admin
-    if not current_user.get('is_super_admin'):
-        raise HTTPException(status_code=403, detail="Super Admin access required")
     
     try:
         db = request.app.state.db
@@ -133,15 +129,13 @@ async def list_all_refunds(
     status: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
-    current_user: dict = Depends(get_current_user)
+    admin: dict = Depends(require_super_admin)
 ):
     """
     List all refund requests (Super Admin only)
     Supports filtering by status and pagination
     """
     # Verify super admin
-    if not current_user.get('is_super_admin'):
-        raise HTTPException(status_code=403, detail="Super Admin access required")
     
     try:
         db = request.app.state.db
@@ -206,15 +200,13 @@ async def list_all_refunds(
 @router.get("/refunds/pending")
 async def get_pending_refunds(
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    admin: dict = Depends(require_super_admin)
 ):
     """
     Get all pending refund requests (Super Admin only)
     Quick access for admin approval workflow
     """
     # Verify super admin
-    if not current_user.get('is_super_admin'):
-        raise HTTPException(status_code=403, detail="Super Admin access required")
     
     try:
         db = request.app.state.db
@@ -253,15 +245,13 @@ async def get_pending_refunds(
 async def get_billing_analytics(
     request: Request,
     days: int = 30,
-    current_user: dict = Depends(get_current_user)
+    admin: dict = Depends(require_super_admin)
 ):
     """
     Get billing analytics (Super Admin only)
     Revenue, invoices, refunds statistics
     """
     # Verify super admin
-    if not current_user.get('is_super_admin'):
-        raise HTTPException(status_code=403, detail="Super Admin access required")
     
     try:
         db = request.app.state.db
@@ -363,14 +353,12 @@ async def export_invoices_csv(
     request: Request,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    current_user: dict = Depends(get_current_user)
+    admin: dict = Depends(require_super_admin)
 ):
     """
     Export invoices to CSV (Super Admin only)
     """
     # Verify super admin
-    if not current_user.get('is_super_admin'):
-        raise HTTPException(status_code=403, detail="Super Admin access required")
     
     try:
         db = request.app.state.db
