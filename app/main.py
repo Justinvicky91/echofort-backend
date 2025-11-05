@@ -21,7 +21,7 @@ import psycopg
 from .deps import get_settings
 from .auth import otp, device, password, reset_admin_password, debug_employees
 from .ai import voice, image
-from .billing import razorpay_webhooks, stripe_webhooks, invoice_generator
+from .billing import razorpay_webhooks, stripe_webhooks, invoice_generator, refund_processing
 from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv
 from . import social
 
@@ -160,6 +160,7 @@ def make_app():
     app.include_router(websockets.router)
     # Note: ai_assistant.router already exists, just replace the file
     app.include_router(invoice_generator.router)
+    app.include_router(refund_processing.router)
     app.include_router(execute_sql.router)
     # NEW ROUTERS - Critical APIs
     app.include_router(call_recordings.router)
