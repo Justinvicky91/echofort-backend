@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     ALLOW_ORIGINS: str = "*"
     ADMIN_USER_IDS_CSV: str = "1"
+    ADMIN_KEY: str | None = None
     LOG_LEVEL: str = "INFO"
 
     APP_BOOT_MODE: str = "bare"  # bare/full toggle
