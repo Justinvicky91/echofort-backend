@@ -1,6 +1,6 @@
 # app/main.py
 # NOTE: DATABASE_URL fix is now in app/__init__.py (runs automatically on package import)
-from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth
+from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth, razorpay_subscription
 from fastapi import FastAPI, Request, HTTPException
 from .admin import execute_sql
 from fastapi.middleware.cors import CORSMiddleware
@@ -89,7 +89,7 @@ def make_app():
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "033_invoices_table.sql", "034_add_user_kyc_fields.sql"]:
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "033_invoices_table.sql", "034_add_user_kyc_fields.sql", "035_razorpay_tables.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
@@ -145,6 +145,7 @@ def make_app():
     app.include_router(screentime.router)
     app.include_router(family.router)
     app.include_router(subscription.router)
+    app.include_router(razorpay_subscription.router)
     app.include_router(test_endpoints.router)
     app.include_router(test_admin_auth.router)
     app.include_router(payment_gateway.router)
@@ -213,7 +214,7 @@ def make_app():
         try:
             with psycopg.connect(dsn) as conn:
                 with conn.cursor() as cur:
-                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "033_invoices_table.sql", "034_add_user_kyc_fields.sql"]:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "023_mobile_sms_detection.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "026_mobile_user_profile.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "033_invoices_table.sql", "034_add_user_kyc_fields.sql", "035_razorpay_tables.sql"]:
                         sql = (mdir / fname).read_text(encoding="utf-8")
                         cur.execute(sql)
                 conn.commit()
