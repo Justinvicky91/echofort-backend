@@ -1,6 +1,6 @@
 # app/main.py
 # NOTE: DATABASE_URL fix is now in app/__init__.py (runs automatically on package import)
-from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment
+from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth
 from fastapi import FastAPI, Request, HTTPException
 from .admin import execute_sql
 from fastapi.middleware.cors import CORSMiddleware
@@ -146,6 +146,7 @@ def make_app():
     app.include_router(family.router)
     app.include_router(subscription.router)
     app.include_router(test_endpoints.router)
+    app.include_router(test_admin_auth.router)
     app.include_router(payment_gateway.router)
     app.include_router(ai_assistant.router)
     app.include_router(ai_assistant_enhanced.router)
