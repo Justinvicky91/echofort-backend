@@ -102,3 +102,55 @@ async def list_geofences(
     """), {"uid": user["user_id"]})).fetchall()
     
     return {"geofences": [dict(r._mapping) for r in rows]}
+
+
+
+@router.get("/member/{user_id}/location")
+async def get_family_member_location(
+    user_id: int,
+    request: Request,
+    user = Depends(get_current_user)
+):
+    """
+    Get latest location of a family member
+    (Only accessible if user is in the same family)
+    """
+    db = request.app.state.db
+    
+    # Check if the requested user is in the same family as the current user
+    family_check = (await db.execute(text("""
+        SELECT 1 FROM family_members fm1
+        JOIN family_members fm2 ON fm1.family_id = fm2.family_id
+        WHERE fm1.user_id = :current_user_id
+        AND fm2.user_id = :target_user_id
+        AND fm2.can_view_location = TRUE
+    """), {"current_user_id": user["user_id"], "target_user_id": user_id})).fetchone()
+    
+    if not family_check:
+        raise HTTPException(403, "Not authorized to view this user's location")
+    
+    # Get latest location
+    location = (await db.execute(text("""
+        SELECT latitude, longitude, accuracy, recorded_at
+        FROM gps_locations
+        WHERE user_id = :uid
+        ORDER BY recorded_at DESC
+        LIMIT 1
+    """), {"uid": user_id})).fetchone()
+    
+    if not location:
+        return {
+            "location": None,
+            "last_update": None,
+            "battery": 0
+        }
+    
+    return {
+        "location": {
+            "latitude": float(location["latitude"]),
+            "longitude": float(location["longitude"]),
+            "accuracy": float(location["accuracy"])
+        },
+        "last_update": location["recorded_at"].isoformat() if location["recorded_at"] else None,
+        "battery": 100  # TODO: Add battery level tracking
+    }
