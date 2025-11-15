@@ -87,7 +87,7 @@ async def give_consent(
         })
         
         consent_id = result.fetchone()[0]
-        db.commit()
+        await db.commit()
         
         return {
             "ok": True,
@@ -164,7 +164,7 @@ async def accept_privacy_policy(
         })
         
         acceptance_id = result.fetchone()[0]
-        db.commit()
+        await db.commit()
         
         return {
             "ok": True,
@@ -223,7 +223,7 @@ async def get_my_data(
             SELECT COUNT(*) FROM realtime_call_sessions WHERE user_id = :user_id
         """), {"user_id": current_user["id"]}).fetchone()[0]
         
-        db.commit()
+        await db.commit()
         
         return {
             "ok": True,
@@ -282,7 +282,7 @@ async def request_data_deletion(
         })
         
         request_id = result.fetchone()[0]
-        db.commit()
+        await db.commit()
         
         return {
             "ok": True,
@@ -364,7 +364,7 @@ async def request_data_export(
         })
         
         request_id = result.fetchone()[0]
-        db.commit()
+        await db.commit()
         
         return {
             "ok": True,
@@ -447,7 +447,7 @@ async def update_privacy_preferences(
                 updated_at = CURRENT_TIMESTAMP
         """)
         
-        db.execute(query, {
+        await db.execute(query, {
             "user_id": current_user["id"],
             "analytics": preferences.allow_analytics,
             "marketing": preferences.allow_marketing,
@@ -457,7 +457,7 @@ async def update_privacy_preferences(
             "retention": preferences.data_retention_preference
         })
         
-        db.commit()
+        await db.commit()
         
         return {
             "ok": True,
@@ -485,7 +485,7 @@ async def get_privacy_preferences(
             WHERE user_id = :user_id
         """)
         
-        result = db.execute(query, {"user_id": current_user["id"]}).fetchone()
+        result = (await db.execute(query, {"user_id": current_user["id"]})).fetchone()
         
         if not result:
             # Return defaults if no preferences set
@@ -533,7 +533,7 @@ async def get_retention_policies(db=Depends(get_db)):
             ORDER BY data_category
         """)
         
-        results = db.execute(query).fetchall()
+        results = (await db.execute(query)).fetchall()
         
         policies = []
         for row in results:
@@ -568,7 +568,7 @@ async def get_processing_activities(db=Depends(get_db)):
             ORDER BY activity_name
         """)
         
-        results = db.execute(query).fetchall()
+        results = (await db.execute(query)).fetchall()
         
         activities = []
         for row in results:
