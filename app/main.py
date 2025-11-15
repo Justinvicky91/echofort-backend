@@ -10,7 +10,7 @@ from . import payment_gateway, ai_assistant, ai_assistant_enhanced, ai_assistant
 from .admin import employee_exemptions
 # NEW IMPORTS - Add after existing imports
 from .admin import payroll, profit_loss, infra_costs
-from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports, email_webhook_v2 as email_webhook
+from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, user_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports, email_webhook_v2 as email_webhook
 # NEW FEATURE MODULES
 from . import email_phishing, content_filter, refund_processing, mobile_caller_id, mobile_sms_detection, mobile_url_checker, mobile_push_notifications, mobile_user_profile, mobile_emergency, mobile_realtime_call
 from .admin import vault_management, user_activity_tracking, device_permissions_management, employee_management_enhanced, api_management
@@ -171,6 +171,7 @@ def make_app():
     app.include_router(digital_arrest.router)
     app.include_router(auto_alert.router)
     app.include_router(kyc_verification.router)
+    app.include_router(user_verification.router)
     app.include_router(live_alerts.router)
     app.include_router(subscription_enhanced.router)
     app.include_router(voice_biometric.router)
