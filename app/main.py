@@ -2,7 +2,7 @@
 # NOTE: DATABASE_URL fix is now in app/__init__.py (runs automatically on package import)
 from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth, razorpay_subscription, stripe_subscription
 from fastapi import FastAPI, Request, HTTPException
-from .admin import execute_sql
+# REMOVED: execute_sql (security risk - raw SQL execution)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import create_engine, text
@@ -165,7 +165,7 @@ def make_app():
     # Note: ai_assistant.router already exists, just replace the file
     app.include_router(invoice_generator.router)
     app.include_router(refund_processing.router)
-    app.include_router(execute_sql.router)
+    # REMOVED: execute_sql.router (security risk - raw SQL execution)
     # NEW ROUTERS - Critical APIs
     app.include_router(call_recordings.router)
     app.include_router(scam_cases.router)
