@@ -26,7 +26,9 @@ else:
     razorpay_client = None
     print("⚠️ Razorpay credentials not configured")
 
-# Pricing plans (in paise - ₹1 = 100 paise)
+# Pricing plans
+# NOTE: Razorpay API requires amounts in paise (₹1 = 100 paise)
+# Display prices are in rupees, but sent to Razorpay in paise
 PRICING_PLANS = {
     "basic": {
         "name": "Basic Plan",
@@ -379,4 +381,41 @@ async def get_subscription_status(
         "start_date": row.subscription_start_date.isoformat() if row.subscription_start_date else None,
         "end_date": row.subscription_end_date.isoformat() if row.subscription_end_date else None,
         "payment_id": row.razorpay_payment_id
+    }
+
+
+@router.get("/plans")
+async def get_razorpay_plans():
+    """
+    Get Razorpay pricing plans (INR for Indian users)
+    Returns prices in rupees for display
+    """
+    return {
+        "ok": True,
+        "plans": {
+            "basic": {
+                "name": "Basic Plan",
+                "price": 399,  # Display price in rupees
+                "currency": "INR",
+                "duration_days": 30,
+                "features": ["AI Call Screening", "Trust Factor", "Scam Database Access"]
+            },
+            "personal": {
+                "name": "Personal Plan",
+                "price": 799,  # Display price in rupees
+                "currency": "INR",
+                "duration_days": 30,
+                "features": ["Everything in Basic", "Call Recording", "Image Scanning", "WhatsApp Protection"]
+            },
+            "family": {
+                "name": "Family Plan",
+                "price": 1499,  # Display price in rupees
+                "currency": "INR",
+                "duration_days": 30,
+                "features": ["Everything in Personal", "GPS Tracking", "Child Protection", "4 Devices"]
+            }
+        },
+        "currency": "INR",
+        "note": "Prices in Indian Rupees (₹)",
+        "trial_period": "₹1 for 24 hours, then full price"
     }
