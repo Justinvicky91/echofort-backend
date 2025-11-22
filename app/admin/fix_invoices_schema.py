@@ -4,7 +4,7 @@ This bypasses the broken migration system
 """
 from fastapi import APIRouter, Depends
 from app.utils import require_super_admin
-from app.deps import get_db_connection
+from app.deps import get_settings
 import psycopg
 
 router = APIRouter(prefix="/admin/fix", tags=["admin-fix"])
@@ -102,7 +102,8 @@ INSERT INTO invoices (
 """
     
     try:
-        dsn = get_db_connection()
+        settings = get_settings()
+        dsn = settings.DATABASE_URL
         with psycopg.connect(dsn) as conn:
             with conn.cursor() as cur:
                 cur.execute(sql)
