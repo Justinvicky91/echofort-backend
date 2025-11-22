@@ -34,9 +34,8 @@ async def list_all_invoices(
             SELECT 
                 i.id,
                 i.invoice_id as invoice_number,
-                i.user_id,
-                u.username as customer_name,
-                u.email as customer_email,
+                i.customer_name,
+                i.customer_email,
                 i.razorpay_payment_id,
                 i.amount,
                 0 as tax_amount,
@@ -47,7 +46,6 @@ async def list_all_invoices(
                 i.invoice_date,
                 i.created_at
             FROM invoices i
-            LEFT JOIN users u ON i.user_id = u.id
         """
         
         params = {}
