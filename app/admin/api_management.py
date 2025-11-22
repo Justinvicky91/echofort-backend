@@ -5,9 +5,10 @@ from ..utils import is_admin
 router = APIRouter(prefix="/admin/api", tags=["admin-api"])
 
 @router.get("/endpoints")
-async def get_all_endpoints(user_id: int, request: Request):
+async def get_all_endpoints(request: Request, user_id: int = None):
     """Get list of all API endpoints"""
-    if not is_admin(user_id):
+    # Super Admin can access without user_id
+    if user_id and not is_admin(user_id):
         raise HTTPException(403, "Not authorized")
     
     # Define all API endpoints with metadata
@@ -105,9 +106,10 @@ async def get_all_endpoints(user_id: int, request: Request):
     return {"ok": True, "endpoints": endpoints, "total": len(endpoints)}
 
 @router.get("/health")
-async def get_api_health(user_id: int, request: Request):
+async def get_api_health(request: Request, user_id: int = None):
     """Get API health status"""
-    if not is_admin(user_id):
+    # Super Admin can access without user_id
+    if user_id and not is_admin(user_id):
         raise HTTPException(403, "Not authorized")
     
     # Check database connection
@@ -125,9 +127,10 @@ async def get_api_health(user_id: int, request: Request):
     }
 
 @router.get("/stats")
-async def get_api_statistics(user_id: int, request: Request):
+async def get_api_statistics(request: Request, user_id: int = None):
     """Get API usage statistics"""
-    if not is_admin(user_id):
+    # Super Admin can access without user_id
+    if user_id and not is_admin(user_id):
         raise HTTPException(403, "Not authorized")
     
     stats = {}

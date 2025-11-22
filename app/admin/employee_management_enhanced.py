@@ -11,9 +11,10 @@ class EmployeeAssignment(BaseModel):
     role_id: int
 
 @router.get("/roles")
-async def get_employee_roles(user_id: int, request: Request):
+async def get_employee_roles(request: Request, user_id: int = None):
     """Get all employee roles"""
-    if not is_admin(user_id):
+    # Super Admin can access without user_id
+    if user_id and not is_admin(user_id):
         raise HTTPException(403, "Not authorized")
     
     rows = (await request.app.state.db.execute(text("""
