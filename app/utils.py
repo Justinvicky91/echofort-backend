@@ -70,10 +70,16 @@ def require_super_admin(authorization: str = Header(None)):
             "role": payload.get("role"),
             "username": payload.get("username")
         }
-        # Check if role is super_admin OR user_id is in admin list
-        if user.get("role") == "super_admin" or is_admin(int(user.get("user_id", 0))):
+        # Check if role is super_admin
+        if user.get("role") == "super_admin":
             return user
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, Exception):
+        # OR check if user_id is in admin list (with safe fallback)
+        try:
+            if is_admin(int(user.get("user_id", 0))):
+                return user
+        except:
+            pass
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
         pass
     
     raise HTTPException(403, "Super admin access required")
