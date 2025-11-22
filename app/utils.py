@@ -63,11 +63,17 @@ def require_super_admin(authorization: str = Header(None)):
     
     # Otherwise try to decode as JWT and check if user is admin
     try:
-        user = get_current_user(authorization)
+        import jwt
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+        user = {
+            "user_id": payload.get("sub"),
+            "role": payload.get("role"),
+            "username": payload.get("username")
+        }
         # Check if role is super_admin OR user_id is in admin list
-        if user and (user.get("role") == "super_admin" or is_admin(user.get("user_id", 0))):
+        if user.get("role") == "super_admin" or is_admin(int(user.get("user_id", 0))):
             return user
-    except HTTPException:
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, Exception):
         pass
     
     raise HTTPException(403, "Super admin access required")
