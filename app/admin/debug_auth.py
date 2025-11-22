@@ -3,6 +3,7 @@ Debug endpoint to test JWT authentication
 """
 from fastapi import APIRouter, Header, HTTPException
 from ..deps import get_settings
+from datetime import datetime, timedelta
 import jwt
 
 router = APIRouter(prefix="/admin/debug", tags=["Debug"])
@@ -38,3 +39,24 @@ async def test_jwt_decode(authorization: str = Header(None)):
         return {"error": f"Invalid token: {str(e)}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
+
+@router.get("/generate-super-admin-jwt")
+async def generate_super_admin_jwt():
+    """Generate a new JWT for Super Admin (for testing)"""
+    settings = get_settings()
+    
+    payload = {
+        "sub": "1",
+        "username": "EchofortSuperAdmin91",
+        "role": "super_admin",
+        "exp": int((datetime.utcnow() + timedelta(days=365)).timestamp())
+    }
+    
+    token = jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
+    
+    return {
+        "ok": True,
+        "token": token,
+        "payload": payload,
+        "note": "This token is valid for 1 year"
+    }
