@@ -17,8 +17,14 @@ async def get_employee_roles(request: Request, user_id: int = None):
     if user_id and not is_admin(user_id):
         raise HTTPException(403, "Not authorized")
     
+    # Query distinct roles from employees table since employee_roles doesn't exist
     rows = (await request.app.state.db.execute(text("""
-        SELECT * FROM employee_roles ORDER BY role_name
+        SELECT DISTINCT role, 
+               COUNT(*) as employee_count,
+               role as role_name
+        FROM employees 
+        GROUP BY role
+        ORDER BY role
     """))).fetchall()
     
     return {"ok": True, "roles": [dict(r._mapping) for r in rows]}
