@@ -1,6 +1,6 @@
 # app/main.py
 # NOTE: DATABASE_URL fix is now in app/__init__.py (runs automatically on package import)
-from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth, razorpay_subscription, stripe_subscription
+from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth, razorpay_subscription, stripe_subscription, legal_documents
 from fastapi import FastAPI, Request, HTTPException
 # REMOVED: execute_sql (security risk - raw SQL execution)
 from fastapi.middleware.cors import CORSMiddleware
@@ -47,6 +47,9 @@ def make_app():
     
     # Include autonomous AI assistant
     app.include_router(ai_assistant_autonomous.router)
+    
+    # Include legal documents (Terms, Privacy, Refund)
+    app.include_router(legal_documents.router)
     
     # Include AI execution engine
     app.include_router(ai_execution_engine.router)
