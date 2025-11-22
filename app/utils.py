@@ -12,8 +12,11 @@ def get_current_user(authorization: str = Header(None)):
     
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+        # Handle both JWT formats: sub (admin) and userId (mobile)
+        user_id = payload.get("sub") or payload.get("userId")
         return {
-            "user_id": payload.get("sub"),
+            "id": user_id,  # For profile endpoints
+            "user_id": user_id,  # For backward compatibility
             "device_id": payload.get("device_id"),
             "role": payload.get("role"),
             "username": payload.get("username")
