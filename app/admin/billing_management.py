@@ -99,7 +99,7 @@ async def get_invoice_details(
                 i.*,
                 u.username as customer_name,
                 u.email as customer_email,
-                u.phone as customer_phone
+                u.phone_number as customer_phone
             FROM invoices i
             LEFT JOIN users u ON i.user_id = u.id
             WHERE i.id = :invoice_id
@@ -260,7 +260,7 @@ async def get_billing_analytics(
         
         # Total revenue
         revenue_result = await db.execute(text("""
-            SELECT COALESCE(SUM(total_amount), 0) as total
+            SELECT COALESCE(SUM(amount), 0) as total
             FROM invoices
             WHERE status = 'paid'
             AND invoice_date >= :start_date
