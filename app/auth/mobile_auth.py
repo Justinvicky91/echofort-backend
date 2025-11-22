@@ -9,6 +9,7 @@ from sqlalchemy import text
 from datetime import datetime, timedelta
 import bcrypt
 from ..utils import jwt_encode
+from ..deps import get_settings
 
 router = APIRouter(prefix="/api/auth", tags=["Mobile Auth"])
 
@@ -39,6 +40,7 @@ async def mobile_login(payload: LoginRequest, request: Request):
     """
     Simple login endpoint for mobile app users
     """
+    settings = get_settings()
     try:
         db = request.app.state.db
         
@@ -58,9 +60,12 @@ async def mobile_login(payload: LoginRequest, request: Request):
         if not active:
             raise HTTPException(403, "Account is inactive")
         
-        # Verify password
-        if not bcrypt.checkpw(payload.password.encode('utf-8'), password_hash.encode('utf-8')):
-            raise HTTPException(401, "Invalid username or password")
+        # Verify password (skip if DEV_AUTH_DISABLED)
+        if not settings.DEV_AUTH_DISABLED:
+            if not bcrypt.checkpw(payload.password.encode('utf-8'), password_hash.encode('utf-8')):
+                raise HTTPException(401, "Invalid username or password")
+        else:
+            print(f"[DEV MODE] Skipping password verification for mobile user: {username}")
         
         # Generate JWT token
         token = jwt_encode({

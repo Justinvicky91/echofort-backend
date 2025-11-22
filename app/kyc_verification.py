@@ -405,3 +405,79 @@ async def get_pending_kyc(request: Request, admin_key: str, limit: int = 50):
     except Exception as e:
         raise HTTPException(500, f"Error fetching pending KYC: {str(e)}")
 
+
+
+# Mobile App Compatibility Endpoint
+@router.post("/verification/complete")
+async def complete_verification_mobile(
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Mobile app endpoint for completing address and ID verification
+    This is called after OTP verification during onboarding
+    """
+    try:
+        db = request.app.state.db
+        user_id = current_user["id"]
+        
+        # Get request body
+        body = await request.json()
+        
+        address = body.get("address")
+        city = body.get("city")
+        district = body.get("district")
+        state = body.get("state")
+        country = body.get("country", "India")
+        pincode = body.get("pincode")
+        id_type = body.get("id_type")
+        id_number = body.get("id_number")
+        
+        # Validate required fields
+        if not all([address, pincode, id_type, id_number]):
+            raise HTTPException(400, "Missing required fields: address, pincode, id_type, id_number")
+        
+        # Validate ID format
+        is_valid, error_msg = validate_id_number(id_type.lower(), id_number)
+        if not is_valid:
+            raise HTTPException(400, error_msg)
+        
+        # Update users table with address and ID info
+        update_user_query = text("""
+            UPDATE users
+            SET 
+                address_line1 = :address,
+                city = :city,
+                district = :district,
+                state = :state,
+                country = :country,
+                pincode = :pincode,
+                id_type = :id_type,
+                id_number = :id_number,
+                kyc_status = 'pending'
+            WHERE id = :user_id
+        """)
+        
+        await db.execute(update_user_query, {
+            "user_id": user_id,
+            "address": address,
+            "city": city,
+            "district": district,
+            "state": state,
+            "country": country,
+            "pincode": pincode,
+            "id_type": id_type,
+            "id_number": id_number
+        })
+        
+        return {
+            "ok": True,
+            "message": "Verification information saved successfully",
+            "kyc_status": "pending",
+            "next_steps": "Please upload your ID proof document for verification"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Verification completion error: {str(e)}")

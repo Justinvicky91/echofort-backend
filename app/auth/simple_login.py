@@ -8,6 +8,7 @@ from sqlalchemy import text
 from datetime import datetime, timedelta
 import bcrypt
 from ..utils import jwt_encode
+from ..deps import get_settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -16,11 +17,18 @@ async def simple_login(payload: dict, request: Request):
     """
     Simple login endpoint - just username and password
     """
+    settings = get_settings()
     username = payload.get("username", "").strip()
     password = payload.get("password", "")
     
-    if not username or not password:
-        raise HTTPException(400, "Username and password required")
+    # DEV MODE: Skip password check if DEV_AUTH_DISABLED
+    if not settings.DEV_AUTH_DISABLED:
+        if not username or not password:
+            raise HTTPException(400, "Username and password required")
+    else:
+        if not username:
+            raise HTTPException(400, "Username required")
+        print(f"[DEV MODE] Auth disabled - accepting username-only login for: {username}")
     
     try:
         db = request.app.state.db
@@ -49,14 +57,17 @@ async def simple_login(payload: dict, request: Request):
         # Unpack tuple result
         emp_id, emp_username, password_hash, emp_role, is_super, dept = result
         
-        # Verify password with bcrypt
-        try:
-            password_match = bcrypt.checkpw(password.encode(), password_hash.encode())
-        except Exception as e:
-            raise HTTPException(401, f"Password verification failed: {str(e)}")
-        
-        if not password_match:
-            raise HTTPException(401, "Invalid username or password")
+        # Verify password with bcrypt (skip if DEV_AUTH_DISABLED)
+        if not settings.DEV_AUTH_DISABLED:
+            try:
+                password_match = bcrypt.checkpw(password.encode(), password_hash.encode())
+            except Exception as e:
+                raise HTTPException(401, f"Password verification failed: {str(e)}")
+            
+            if not password_match:
+                raise HTTPException(401, "Invalid username or password")
+        else:
+            print(f"[DEV MODE] Skipping password verification for: {username}")
         
         # Create token
         token = jwt_encode({

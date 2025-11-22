@@ -37,6 +37,10 @@ class Settings(BaseSettings):
 
     APP_BOOT_MODE: str = "bare"  # bare/full toggle
 
+    # DEV MODE: Username-only auth (no password/OTP/2FA)
+    DEV_AUTH_DISABLED: bool = True
+    DEV_SUPER_ADMIN_BYPASS: bool = True
+
     @field_validator('DATABASE_URL')
     @classmethod
     def fix_database_url(cls, v: str) -> str:
