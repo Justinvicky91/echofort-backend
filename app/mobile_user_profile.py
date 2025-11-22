@@ -74,7 +74,7 @@ async def get_profile(
             WHERE id = :user_id
         """)
         
-        user = (await db.execute(user_query, {"user_id": current_user["id"]})).fetchone()
+        user = db.execute(user_query, {"user_id": current_user["id"]}).fetchone()
         
         # Get extended profile
         profile_query = text("""
@@ -86,7 +86,7 @@ async def get_profile(
             WHERE user_id = :user_id
         """)
         
-        profile = (await db.execute(profile_query, {"user_id": current_user["id"]})).fetchone()
+        profile = db.execute(profile_query, {"user_id": current_user["id"]}).fetchone()
         
         # Get statistics
         stats_query = text("""
@@ -98,7 +98,7 @@ async def get_profile(
             WHERE user_id = :user_id
         """)
         
-        stats = (await db.execute(stats_query, {"user_id": current_user["id"]})).fetchone()
+        stats = db.execute(stats_query, {"user_id": current_user["id"]}).fetchone()
         
         result = {
             "ok": True,
@@ -298,7 +298,7 @@ async def get_app_preferences(
             WHERE user_id = :user_id
         """)
         
-        result = (await db.execute(query, {"user_id": current_user["id"]})).fetchone()
+        result = db.execute(query, {"user_id": current_user["id"]}).fetchone()
         
         if result:
             return {
@@ -423,7 +423,7 @@ async def submit_feedback(
             RETURNING id
         """)
         
-        feedback_id = (await db.execute(query, {
+        feedback_id = db.execute(query, {
             "user_id": current_user["id"],
             "feedback_type": request.feedbackType,
             "category": request.category,
@@ -466,7 +466,7 @@ async def get_achievements(
             ORDER BY earned_at DESC
         """)
         
-        results = (await db.execute(query, {"user_id": current_user["id"]})).fetchall()
+        results = db.execute(query, {"user_id": current_user["id"]}).fetchall()
         
         achievements = []
         for row in results:
@@ -505,10 +505,10 @@ async def get_activity_log(
             LIMIT :limit
         """)
         
-        results = (await db.execute(query, {
+        results = db.execute(query, {
             "user_id": current_user["id"],
             "limit": limit
-        })).fetchall()
+        }).fetchall()
         
         activities = []
         for row in results:
