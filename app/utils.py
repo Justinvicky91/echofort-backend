@@ -12,7 +12,12 @@ def get_current_user(authorization: str = Header(None)):
     
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
-        return {"user_id": payload.get("sub"), "device_id": payload.get("device_id")}
+        return {
+            "user_id": payload.get("sub"),
+            "device_id": payload.get("device_id"),
+            "role": payload.get("role"),
+            "username": payload.get("username")
+        }
     except jwt.ExpiredSignatureError:
         raise HTTPException(401, "Token expired")
     except jwt.InvalidTokenError:
