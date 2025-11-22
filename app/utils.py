@@ -59,7 +59,8 @@ def require_super_admin(authorization: str = Header(None)):
     # Otherwise try to decode as JWT and check if user is admin
     try:
         user = get_current_user(authorization)
-        if user and is_admin(user.get("user_id", 0)):
+        # Check if role is super_admin OR user_id is in admin list
+        if user and (user.get("role") == "super_admin" or is_admin(user.get("user_id", 0))):
             return user
     except HTTPException:
         pass
