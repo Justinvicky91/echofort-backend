@@ -30,6 +30,10 @@ class EmailAnalysisResponse(BaseModel):
     threat_indicators: List[str]
     recommendations: List[str]
     analysis_timestamp: str
+    # Block 5: New risk dimensions
+    content_category: Optional[str] = "benign"
+    violence_or_extremism_risk: Optional[int] = 0
+    tags: Optional[List[str]] = []
 
 
 # Phishing indicators database
@@ -49,6 +53,21 @@ SUSPICIOUS_DOMAINS = [
 TRUSTED_DOMAINS = [
     "gmail.com", "yahoo.com", "outlook.com", "hotmail.com",
     "echofort.ai", "government.in", "nic.in"
+]
+
+# Block 5: Harmful extremism / violence keywords (content-based)
+EXTREMISM_KEYWORDS = [
+    "kill infidel", "death to", "destroy enemy", "holy war",
+    "martyr operation", "join fight", "recruit soldier",
+    "bomb making", "weapon instruction", "attack plan",
+    "hate group", "eliminate group", "praise terror",
+    "glory attack", "training camp"
+]
+
+# Self-harm keywords
+SELF_HARM_KEYWORDS = [
+    "how to die", "suicide method", "end my life",
+    "kill myself", "self harm", "cutting guide"
 ]
 
 
@@ -252,6 +271,24 @@ async def detect_phishing(request: EmailAnalysisRequest):
         links_score, links_indicators = analyze_links(request.links or [])
         attachments_score, attachments_indicators = analyze_attachments(request.attachments or [])
         
+        # Block 5: Check for extremism / self-harm content
+        violence_or_extremism_risk = 0
+        content_category = "benign"
+        tags = []
+        body_lower = request.body.lower()
+        
+        extremism_count = sum(1 for kw in EXTREMISM_KEYWORDS if kw in body_lower)
+        self_harm_count = sum(1 for kw in SELF_HARM_KEYWORDS if kw in body_lower)
+        
+        if extremism_count >= 2:
+            violence_or_extremism_risk = min(10, extremism_count * 2)
+            content_category = "harmful_extremist_content"
+            tags.append("extremism")
+        elif self_harm_count >= 1:
+            violence_or_extremism_risk = min(10, self_harm_count * 3)
+            content_category = "self_harm_risk"
+            tags.append("self_harm")
+        
         # Calculate total risk score (0-100)
         total_score = min(100, sender_score + subject_score + body_score + links_score + attachments_score)
         
@@ -302,13 +339,21 @@ async def detect_phishing(request: EmailAnalysisRequest):
         
         confidence_score = min(1.0, total_score / 100.0)
         
+        # Block 5: Determine final content category
+        if content_category == "benign" and is_phishing:
+            content_category = "scam_fraud"
+        
         return EmailAnalysisResponse(
             is_phishing=is_phishing,
             confidence_score=confidence_score,
             risk_level=risk_level,
             threat_indicators=all_indicators,
             recommendations=recommendations,
-            analysis_timestamp=datetime.utcnow().isoformat()
+            analysis_timestamp=datetime.utcnow().isoformat(),
+            # Block 5: New risk dimensions
+            content_category=content_category,
+            violence_or_extremism_risk=violence_or_extremism_risk,
+            tags=tags
         )
     
     except Exception as e:

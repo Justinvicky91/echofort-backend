@@ -45,6 +45,22 @@ PAYMENT_KEYWORDS = [
     "ifsc code", "aadhaar", "pan card"
 ]
 
+# Block 5: Harmful extremism / violence patterns (content-based, not identity-based)
+EXTREMISM_PATTERNS = [
+    r"kill.*infidel", r"death.*to", r"destroy.*enemy",
+    r"jihad.*violence", r"holy.*war", r"martyr.*operation",
+    r"join.*fight", r"recruit.*soldier", r"training.*camp",
+    r"bomb.*making", r"weapon.*instruction", r"attack.*plan",
+    r"hate.*[group]", r"eliminate.*[group]", r"purge.*[group]",
+    r"praise.*terror", r"glory.*attack", r"hero.*bomber"
+]
+
+# Self-harm / suicide content patterns
+SELF_HARM_PATTERNS = [
+    r"how.*to.*die", r"suicide.*method", r"end.*my.*life",
+    r"kill.*myself", r"self.*harm", r"cutting.*guide"
+]
+
 
 def extract_text_from_image(image: Image.Image) -> str:
     """
@@ -128,8 +144,43 @@ def analyze_image_content(image: Image.Image) -> dict:
             flags.append("multiple_payment_keywords")
             risk_score += 0.25
     
-    # Cap risk score at 1.0
+    # Block 5: Check for extremism / violence / self-harm content
+    violence_or_extremism_risk = 0
+    content_category = "benign"
+    tags = []
+    extremism_indicators = []
+    
+    if extracted_text:
+        text_lower = extracted_text.lower()
+        
+        # Check for extremism patterns
+        for pattern in EXTREMISM_PATTERNS:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                extremism_indicators.append(pattern)
+                violence_or_extremism_risk += 2
+        
+        # Check for self-harm patterns
+        for pattern in SELF_HARM_PATTERNS:
+            if re.search(pattern, text_lower, re.IGNORECASE):
+                extremism_indicators.append(pattern)
+                violence_or_extremism_risk += 1
+                tags.append("self_harm_risk")
+        
+        # Determine content category based on detected patterns
+        if extremism_indicators:
+            if violence_or_extremism_risk >= 4:
+                content_category = "harmful_extremist_content"
+                tags.append("extremism")
+            elif "self_harm_risk" in tags:
+                content_category = "self_harm_risk"
+            else:
+                content_category = "harassment_abuse"
+        elif detected_patterns or payment_count >= 2:
+            content_category = "scam_fraud"
+    
+    # Cap scores
     risk_score = min(1.0, risk_score)
+    violence_or_extremism_risk = min(10, violence_or_extremism_risk)
     
     return {
         "risk_score": risk_score,
@@ -141,12 +192,17 @@ def analyze_image_content(image: Image.Image) -> dict:
             "height": height,
             "mean_brightness": float(mean_color.mean()),
             "color_variance": float(std_color.mean())
-        }
+        },
+        # Block 5: New risk dimensions
+        "content_category": content_category,
+        "violence_or_extremism_risk": violence_or_extremism_risk,
+        "tags": tags,
+        "extremism_indicators": extremism_indicators
     }
 
 
 @router.post("/scan")
-async def scan_image(file: UploadFile = File(...)):
+async def scan_image(file: UploadFile = File(...), db=None, user_id: str = None):
     """
     Scan image for scam indicators
     Analyzes screenshots, documents, and suspicious images
@@ -172,6 +228,24 @@ async def scan_image(file: UploadFile = File(...)):
         else:
             recommendation = "✓ Appears safe, but always verify before sharing personal information."
         
+        # Block 5: Enhanced recommendation based on extremism risk
+        if analysis["violence_or_extremism_risk"] >= 7:
+            recommendation = "🚨 HIGH RISK - Potentially harmful or extremist content detected. This is an AI prediction and may be wrong. If you believe this content poses a threat, please report to appropriate authorities."
+        
+        # Block 5: Log high-risk content to evidence vault
+        evidence_id = None
+        if db and analysis["violence_or_extremism_risk"] >= 7:
+            from ..block5_vault_helper import log_high_risk_to_vault
+            evidence_id = await log_high_risk_to_vault(
+                db=db,
+                user_id=user_id or "anonymous",
+                evidence_type="image",
+                content_category=analysis["content_category"],
+                violence_or_extremism_risk=analysis["violence_or_extremism_risk"],
+                tags=analysis["tags"],
+                analysis_data=analysis
+            )
+        
         return {
             "ok": True,
             "is_suspicious": is_suspicious,
@@ -181,7 +255,13 @@ async def scan_image(file: UploadFile = File(...)):
             "extracted_text": analysis["extracted_text"][:500] if analysis["extracted_text"] else None,  # Limit text length
             "recommendation": recommendation,
             "image_stats": analysis["image_stats"],
-            "analysis_method": "PIL + OCR + Rule-based Detection"
+            "analysis_method": "PIL + OCR + Rule-based Detection",
+            # Block 5: New risk dimensions
+            "content_category": analysis["content_category"],
+            "violence_or_extremism_risk": analysis["violence_or_extremism_risk"],
+            "tags": analysis["tags"],
+            "ai_prediction_disclaimer": "These are automated predictions, not legal determinations. May be inaccurate.",
+            "evidence_id": evidence_id  # Block 5: Evidence vault ID if logged
         }
     
     except Exception as e:
