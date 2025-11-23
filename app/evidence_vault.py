@@ -241,7 +241,7 @@ async def get_my_vault(
         
         result = await db.execute(text(f"""
             SELECT id, evidence_id, evidence_type, family_member_id,
-                   caller_number, sender_number, duration,
+                   caller_number, duration,
                    threat_level, scam_type, created_at,
                    latitude, longitude, address
             FROM evidence_vault
@@ -258,15 +258,14 @@ async def get_my_vault(
                 "evidence_type": row[2],
                 "family_member_id": row[3],
                 "caller_number": row[4],
-                "sender_number": row[5],
-                "duration": row[6],
-                "threat_level": row[7],
-                "scam_type": row[8],
-                "created_at": row[9].isoformat() if row[9] else None,
+                "duration": row[5],
+                "threat_level": row[6],
+                "scam_type": row[7],
+                "created_at": row[8].isoformat() if row[8] else None,
                 "location": {
-                    "latitude": row[10],
-                    "longitude": row[11],
-                    "address": row[12]
+                    "latitude": row[9],
+                    "longitude": row[10],
+                    "address": row[11]
                 }
             })
         
