@@ -208,9 +208,9 @@ async def update_profile(
             """)
             await db.execute(profile_query, profile_params)
         
-        # Log activity
-        await db.execute(text("SELECT log_user_activity(:user_id, 'profile_update', NULL, NULL, NULL)"),
-                  {"user_id": current_user["id"]})
+        # Log activity (commented out - causes hanging)
+        # await db.execute(text("SELECT log_user_activity(:user_id, 'profile_update', NULL, NULL, NULL)"),
+        #           {"user_id": current_user["id"]})
         
         
         return {"ok": True, "message": "Profile updated successfully"}
