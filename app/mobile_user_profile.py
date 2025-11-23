@@ -212,12 +212,10 @@ async def update_profile(
         await db.execute(text("SELECT log_user_activity(:user_id, 'profile_update', NULL, NULL, NULL)"),
                   {"user_id": current_user["id"]})
         
-        await db.commit()
         
         return {"ok": True, "message": "Profile updated successfully"}
         
     except Exception as e:
-        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -269,14 +267,12 @@ async def update_preferences(
         """)
         
         await db.execute(query, params)
-        await db.commit()
         
         return {"ok": True, "message": "Preferences updated"}
         
     except HTTPException:
         raise
     except Exception as e:
-        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -395,14 +391,12 @@ async def update_app_preferences(
         """)
         
         await db.execute(query, params)
-        await db.commit()
         
         return {"ok": True, "message": "App preferences updated"}
         
     except HTTPException:
         raise
     except Exception as e:
-        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -432,7 +426,6 @@ async def submit_feedback(
             "rating": request.rating
         })).fetchone()[0]
         
-        await db.commit()
         
         return {
             "ok": True,
@@ -441,7 +434,6 @@ async def submit_feedback(
         }
         
     except Exception as e:
-        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -535,10 +527,8 @@ async def refresh_statistics(
     try:
         await db.execute(text("SELECT update_user_statistics(:user_id)"),
                   {"user_id": current_user["id"]})
-        await db.commit()
         
         return {"ok": True, "message": "Statistics refreshed"}
         
     except Exception as e:
-        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
