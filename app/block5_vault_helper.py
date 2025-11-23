@@ -35,7 +35,9 @@ async def log_high_risk_to_vault(
         evidence_id if logged, None otherwise
     """
     # Only log if risk exceeds threshold
+    print(f"🔍 Block 5: Vault helper called - risk={violence_or_extremism_risk}, threshold={threshold}, evidence_type={evidence_type}")
     if violence_or_extremism_risk < threshold:
+        print(f"⚠️ Block 5: Risk {violence_or_extremism_risk} < threshold {threshold}, skipping vault")
         return None
     
     # Create database connection if not provided
@@ -131,9 +133,15 @@ async def log_high_risk_to_vault(
         return evidence_id
         
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         print(f"❌ Block 5: Failed to log to vault: {e}")
+        print(f"Full traceback: {error_details}")
         if db:
-            await db.rollback()
+            try:
+                await db.rollback()
+            except:
+                pass
         return None
     finally:
         # Close connection if we created it
