@@ -58,8 +58,8 @@ async def log_high_risk_to_vault(
             database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
         
         engine = create_async_engine(database_url)
-        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-        db = async_session()
+        async_session_factory = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        db = async_session_factory()
         created_connection = True
     
     try:
