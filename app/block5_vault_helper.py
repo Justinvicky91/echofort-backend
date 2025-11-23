@@ -22,7 +22,7 @@ async def log_high_risk_to_vault(
     Log high-risk content to evidence_vault when threshold is exceeded
     
     Args:
-        db: Database connection
+        db: Database connection (if None, will create one from DATABASE_URL)
         user_id: User ID (or "anonymous" if not available)
         evidence_type: Type of evidence (image, email, sms, voice)
         content_category: AI-predicted category
@@ -37,6 +37,30 @@ async def log_high_risk_to_vault(
     # Only log if risk exceeds threshold
     if violence_or_extremism_risk < threshold:
         return None
+    
+    # Create database connection if not provided
+    created_connection = False
+    if db is None:
+        import os
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+        
+        database_url = os.getenv("DATABASE_URL", "")
+        if not database_url:
+            print("❌ Block 5: DATABASE_URL not set, cannot log to vault")
+            return None
+        
+        # Convert postgres:// to postgresql:// for async
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif not database_url.startswith("postgresql+asyncpg://"):
+            database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        
+        engine = create_async_engine(database_url)
+        async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+        db = async_session()
+        created_connection = True
     
     try:
         # Generate evidence ID
@@ -108,5 +132,10 @@ async def log_high_risk_to_vault(
         
     except Exception as e:
         print(f"❌ Block 5: Failed to log to vault: {e}")
-        await db.rollback()
+        if db:
+            await db.rollback()
         return None
+    finally:
+        # Close connection if we created it
+        if created_connection and db:
+            await db.close()

@@ -229,12 +229,13 @@ async def scan_image(file: UploadFile = File(...), db=None, user_id: str = None)
             recommendation = "✓ Appears safe, but always verify before sharing personal information."
         
         # Block 5: Enhanced recommendation based on extremism risk
-        if analysis["violence_or_extremism_risk"] >= 7:
+        from ..config import block5_config
+        if block5_config.ENABLE_EXTREMISM_DETECTION_IMAGE and analysis["violence_or_extremism_risk"] >= block5_config.EXTREMISM_VAULT_THRESHOLD:
             recommendation = "🚨 HIGH RISK - Potentially harmful or extremist content detected. This is an AI prediction and may be wrong. If you believe this content poses a threat, please report to appropriate authorities."
         
         # Block 5: Log high-risk content to evidence vault
         evidence_id = None
-        if db and analysis["violence_or_extremism_risk"] >= 7:
+        if db and block5_config.ENABLE_EXTREMISM_DETECTION_IMAGE and analysis["violence_or_extremism_risk"] >= block5_config.EXTREMISM_VAULT_THRESHOLD:
             from ..block5_vault_helper import log_high_risk_to_vault
             evidence_id = await log_high_risk_to_vault(
                 db=db,

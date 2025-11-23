@@ -12,7 +12,7 @@ from .admin import employee_exemptions
 from .admin import payroll, profit_loss, infra_costs
 from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, user_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports, email_webhook_v2 as email_webhook
 # NEW FEATURE MODULES
-from . import email_phishing, content_filter, refund_processing, mobile_caller_id, mobile_sms_detection, mobile_url_checker, mobile_push_notifications, mobile_user_profile, mobile_emergency, mobile_realtime_call
+from . import email_phishing, content_filter, refund_processing, mobile_caller_id, mobile_sms_detection, mobile_url_checker, mobile_push_notifications, mobile_user_profile, mobile_emergency, mobile_realtime_call, consent_integration
 from .admin import vault_management, user_activity_tracking, device_permissions_management, employee_management_enhanced, api_management
 from pathlib import Path
 import os
@@ -187,6 +187,7 @@ def make_app():
     # NEW FEATURE ROUTERS - Complete missing features
     app.include_router(email_phishing.router)
     app.include_router(content_filter.router)
+    app.include_router(consent_integration.router)  # Block 5: Consent logging
     app.include_router(refund_processing.router)
     app.include_router(mobile_caller_id.router)
     app.include_router(mobile_sms_detection.router)

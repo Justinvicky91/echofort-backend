@@ -344,8 +344,9 @@ async def detect_phishing(request: EmailAnalysisRequest):
             content_category = "scam_fraud"
         
         # Block 5: Log high-risk content to evidence vault
+        from .config import block5_config
         evidence_id = None
-        if violence_or_extremism_risk >= 7 and request.user_id:
+        if block5_config.ENABLE_EXTREMISM_DETECTION_EMAIL and violence_or_extremism_risk >= block5_config.EXTREMISM_VAULT_THRESHOLD and request.user_id:
             try:
                 from .block5_vault_helper import log_high_risk_to_vault
                 evidence_id = await log_high_risk_to_vault(
