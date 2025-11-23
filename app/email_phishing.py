@@ -346,7 +346,9 @@ async def detect_phishing(request: EmailAnalysisRequest):
         # Block 5: Log high-risk content to evidence vault
         from .config import block5_config
         evidence_id = None
+        print(f"🔍 Email endpoint: risk={violence_or_extremism_risk}, threshold={block5_config.EXTREMISM_VAULT_THRESHOLD}, user_id={request.user_id}, enabled={block5_config.ENABLE_EXTREMISM_DETECTION_EMAIL}")
         if block5_config.ENABLE_EXTREMISM_DETECTION_EMAIL and violence_or_extremism_risk >= block5_config.EXTREMISM_VAULT_THRESHOLD and request.user_id:
+            print("✅ Email endpoint: Calling vault helper...")
             try:
                 from .block5_vault_helper import log_high_risk_to_vault
                 evidence_id = await log_high_risk_to_vault(
@@ -364,9 +366,10 @@ async def detect_phishing(request: EmailAnalysisRequest):
                         "self_harm_indicators": [kw for kw in SELF_HARM_KEYWORDS if kw in body_lower]
                     }
                 )
+                print(f"✅ Email endpoint: Vault helper returned evidence_id={evidence_id}")
             except Exception as vault_error:
                 # Don't fail the whole request if vault logging fails
-                print(f"Vault logging failed: {vault_error}")
+                print(f"❌ Email endpoint: Vault logging failed: {vault_error}")
         
         return EmailAnalysisResponse(
             is_phishing=is_phishing,
