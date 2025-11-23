@@ -243,7 +243,8 @@ async def get_my_vault(
             SELECT id, evidence_id, evidence_type, family_member_id,
                    caller_number, duration,
                    threat_level, scam_type, created_at,
-                   latitude, longitude, address
+                   latitude, longitude, address,
+                   content_category, violence_or_extremism_risk, tags
             FROM evidence_vault
             WHERE {where_sql}
             ORDER BY created_at DESC
@@ -266,7 +267,11 @@ async def get_my_vault(
                     "latitude": row[9],
                     "longitude": row[10],
                     "address": row[11]
-                }
+                },
+                # Block 5 fields
+                "content_category": row[12],
+                "violence_or_extremism_risk": row[13],
+                "tags": row[14]
             })
         
         return {
