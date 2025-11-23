@@ -259,14 +259,29 @@ async def update_preferences(
         
         updates.append("updated_at = CURRENT_TIMESTAMP")
         
-        query = text(f"""
-            INSERT INTO user_profiles_mobile (user_id)
-            VALUES (:user_id)
-            ON CONFLICT (user_id) DO UPDATE
-            SET {', '.join(updates)}
-        """)
+        # Check if profile exists
+        check_query = text("SELECT user_id FROM user_profiles_mobile WHERE user_id = :user_id")
+        existing = (await db.execute(check_query, {"user_id": current_user["id"]})).fetchone()
         
-        await db.execute(query, params)
+        if existing:
+            # UPDATE existing profile
+            update_query = text(f"""
+                UPDATE user_profiles_mobile
+                SET {', '.join(updates)}
+                WHERE user_id = :user_id
+            """)
+            await db.execute(update_query, params)
+        else:
+            # INSERT new profile
+            insert_query = text("INSERT INTO user_profiles_mobile (user_id) VALUES (:user_id)")
+            await db.execute(insert_query, {"user_id": current_user["id"]})
+            # Then UPDATE with preferences
+            update_query = text(f"""
+                UPDATE user_profiles_mobile
+                SET {', '.join(updates)}
+                WHERE user_id = :user_id
+            """)
+            await db.execute(update_query, params)
         
         return {"ok": True, "message": "Preferences updated"}
         
@@ -383,14 +398,29 @@ async def update_app_preferences(
         
         updates.append("updated_at = CURRENT_TIMESTAMP")
         
-        query = text(f"""
-            INSERT INTO user_app_preferences (user_id)
-            VALUES (:user_id)
-            ON CONFLICT (user_id) DO UPDATE
-            SET {', '.join(updates)}
-        """)
+        # Check if preferences exist
+        check_query = text("SELECT user_id FROM user_app_preferences WHERE user_id = :user_id")
+        existing = (await db.execute(check_query, {"user_id": current_user["id"]})).fetchone()
         
-        await db.execute(query, params)
+        if existing:
+            # UPDATE existing preferences
+            update_query = text(f"""
+                UPDATE user_app_preferences
+                SET {', '.join(updates)}
+                WHERE user_id = :user_id
+            """)
+            await db.execute(update_query, params)
+        else:
+            # INSERT new preferences
+            insert_query = text("INSERT INTO user_app_preferences (user_id) VALUES (:user_id)")
+            await db.execute(insert_query, {"user_id": current_user["id"]})
+            # Then UPDATE with preferences
+            update_query = text(f"""
+                UPDATE user_app_preferences
+                SET {', '.join(updates)}
+                WHERE user_id = :user_id
+            """)
+            await db.execute(update_query, params)
         
         return {"ok": True, "message": "App preferences updated"}
         
