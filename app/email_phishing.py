@@ -34,6 +34,7 @@ class EmailAnalysisResponse(BaseModel):
     content_category: Optional[str] = "benign"
     violence_or_extremism_risk: Optional[int] = 0
     tags: Optional[List[str]] = []
+    evidence_id: Optional[str] = None  # Block 5: Evidence vault ID if logged
 
 
 # Phishing indicators database
@@ -381,7 +382,8 @@ async def detect_phishing(request: EmailAnalysisRequest):
             # Block 5: New risk dimensions
             content_category=content_category,
             violence_or_extremism_risk=violence_or_extremism_risk,
-            tags=tags
+            tags=tags,
+            evidence_id=evidence_id
         )
     
     except Exception as e:
