@@ -388,3 +388,58 @@ For refund requests:
             "content_type": "markdown",
         }
     )
+
+
+# Block 5: AI Safety & Risk Predictions
+
+### AI Content Analysis & Safety Scores
+
+To protect our users and community, EchoFort utilizes advanced automated systems, including artificial intelligence (AI), to analyze content that you process or share through our services. This includes, but is not limited to, calls, messages, images, emails, and links.
+
+**Purpose of Analysis:** This analysis is conducted for the sole purpose of detecting and providing you with safety alerts regarding potential risks, such as:
+
+*   Scams, fraud, and phishing attempts.
+*   Harassment, bullying, and abuse.
+*   Potentially harmful, violent, or extremist-style content.
+
+**Nature of Predictions:** The outputs of this analysis, including risk scores, content categories, and safety alerts, are **automated predictions and probabilistic assessments**. They are provided for informational purposes to help you make safer decisions. They are not legal determinations, factual assertions, or official labels. EchoFort is not a court, a law enforcement agency, or a government authority, and our AI's predictions do not represent a legal judgment on the content's legality.
+
+**User Responsibility:** You remain solely responsible for your decisions and actions based on these predictions. It is your responsibility to independently verify information and, if you believe you have encountered illegal content or are in danger, to report it to the appropriate law enforcement authorities.
+
+### No Promotion or Endorsement
+
+EchoFort is a neutral safety platform. Our use of labels such as “extremism,” “hate speech,” or “terrorism risk” is based on automated, content-focused pattern detection and is applied solely for the purpose of user safety and risk awareness. EchoFort does not endorse, support, or promote any political, religious, or social ideology, organization, or belief.
+
+### Limitation of Liability for Predictions
+
+While we strive to make our AI safety predictions as accurate as possible, they may be incorrect, incomplete, or misinterpreted. To the fullest extent permissible by applicable law, EchoFort shall not be liable for any decisions, damages, or losses arising from your reliance on the risk scores, categories, or alerts provided by our service. You should not rely on EchoFort as your only source of truth or as a definitive assessment of any content's safety or legality.
+
+
+# Block 5: Content Analysis & Evidence Vault
+
+### Content Analysis & Evidence Vault
+
+**What We Analyze:** To provide our safety features, we analyze the content you choose to route through or share with EchoFort. This may include the audio of calls you record, the text of messages and emails, images, QR codes, and links.
+
+**Why We Analyze It:** Our purpose is strictly limited to providing you with safety and security services. This includes:
+
+*   Detecting and alerting you to potential scams, fraud, and phishing attacks.
+*   Identifying harassment, abuse, and bullying.
+*   Flagging potentially harmful, violent, or extremist-style content for your awareness.
+*   Enabling family safety features to protect children from harmful content.
+
+**What We Store (Evidence Vault):** When our systems detect high-risk content (such as a severe scam attempt or content with a high risk of violence) or when you explicitly enable evidence backup, we may store a record in your secure Evidence Vault. This record may include a copy of the content, the associated risk scores, and other metadata. This evidence is stored with a 7-year retention period to be available for your legal defense, to support complaints you may choose to file, or for our defense in case of disputes.
+
+**Who Can Access It:** Your data is private. Access to the content in your Evidence Vault is strictly limited to:
+
+*   **You**, the user.
+*   The designated **family owner**, in the case of a child or family account, for the purpose of ensuring the child's safety.
+*   Limited, authorized **EchoFort staff**, but only when you explicitly request support or legal assistance that requires access to this data.
+
+We do not share this data with third parties for marketing or advertising. We will only cooperate with law enforcement or government authorities upon receipt of a valid legal request, as detailed in our Law Enforcement Guidelines.
+
+### Children & Family Protection Notice
+
+For accounts designated as child or family profiles, our content analysis features serve as safety filters to help protect children from online harms. These filters are designed to detect and alert parents or guardians to content that may encourage self-harm, promote violence, or contain extremist propaganda or other illegal material.
+
+As a parent or guardian, you are informed that your child’s communications routed through EchoFort may be analyzed for these safety purposes. We encourage you to use these tools as part of a broader strategy of online safety, including open communication with your child and the use of other parental controls. You are responsible for configuring alerts and restrictions in accordance with your judgment and applicable local laws and personal judgment.
