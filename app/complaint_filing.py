@@ -313,7 +313,7 @@ Report ID: {cert_id}
         """
     
     return {
-        "to": recipient['email'],
+        "to": recipient.get('email') or recipient.get('fraud_email'),
         "cc": recipient.get('cc', []),
         "subject": subject,
         "body": body.strip(),
