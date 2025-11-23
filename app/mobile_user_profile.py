@@ -69,7 +69,7 @@ async def get_profile(
     try:
         # Get basic user info
         user_query = text("""
-            SELECT id, username, email, phone, created_at
+            SELECT id, username, email, phone_number, created_at
             FROM users
             WHERE id = :user_id
         """)
