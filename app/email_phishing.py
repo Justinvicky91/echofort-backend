@@ -343,6 +343,30 @@ async def detect_phishing(request: EmailAnalysisRequest):
         if content_category == "benign" and is_phishing:
             content_category = "scam_fraud"
         
+        # Block 5: Log high-risk content to evidence vault
+        evidence_id = None
+        if violence_or_extremism_risk >= 7 and request.user_id:
+            try:
+                from .block5_vault_helper import log_high_risk_to_vault
+                evidence_id = await log_high_risk_to_vault(
+                    db=None,  # Will use env DATABASE_URL
+                    user_id=str(request.user_id),
+                    evidence_type="email",
+                    content_category=content_category,
+                    violence_or_extremism_risk=violence_or_extremism_risk,
+                    tags=tags,
+                    analysis_data={
+                        "sender_email": request.sender_email,
+                        "subject": request.subject,
+                        "body_preview": request.body[:200],
+                        "extremism_indicators": [kw for kw in EXTREMISM_KEYWORDS if kw in body_lower],
+                        "self_harm_indicators": [kw for kw in SELF_HARM_KEYWORDS if kw in body_lower]
+                    }
+                )
+            except Exception as vault_error:
+                # Don't fail the whole request if vault logging fails
+                print(f"Vault logging failed: {vault_error}")
+        
         return EmailAnalysisResponse(
             is_phishing=is_phishing,
             confidence_score=confidence_score,
