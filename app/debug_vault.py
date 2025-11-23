@@ -13,6 +13,14 @@ async def test_vault_helper():
     """
     Test the vault helper directly with known parameters
     """
+    import io
+    import sys
+    
+    # Capture stdout to get print statements
+    captured_output = io.StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = captured_output
+    
     try:
         from .block5_vault_helper import log_high_risk_to_vault
         
@@ -32,16 +40,24 @@ async def test_vault_helper():
             }
         )
         
+        sys.stdout = old_stdout
+        logs = captured_output.getvalue()
+        
         return {
             "ok": True,
             "evidence_id": evidence_id,
-            "message": "Vault helper executed successfully" if evidence_id else "Vault helper returned None (check logs for errors)"
+            "message": "Vault helper executed successfully" if evidence_id else "Vault helper returned None",
+            "logs": logs
         }
     
     except Exception as e:
         import traceback
+        sys.stdout = old_stdout
+        logs = captured_output.getvalue()
+        
         return {
             "ok": False,
             "error": str(e),
-            "traceback": traceback.format_exc()
+            "traceback": traceback.format_exc(),
+            "logs": logs
         }
