@@ -74,7 +74,7 @@ async def get_profile(
             WHERE id = :user_id
         """)
         
-        user = db.execute(user_query, {"user_id": current_user["id"]}).fetchone()
+        user = (await db.execute(user_query, {"user_id": current_user["id"]})).fetchone()
         
         # Get extended profile
         profile_query = text("""
@@ -86,7 +86,7 @@ async def get_profile(
             WHERE user_id = :user_id
         """)
         
-        profile = db.execute(profile_query, {"user_id": current_user["id"]}).fetchone()
+        profile = (await db.execute(profile_query, {"user_id": current_user["id"]})).fetchone()
         
         # Get statistics
         stats_query = text("""
@@ -98,7 +98,7 @@ async def get_profile(
             WHERE user_id = :user_id
         """)
         
-        stats = db.execute(stats_query, {"user_id": current_user["id"]}).fetchone()
+        stats = (await db.execute(stats_query, {"user_id": current_user["id"]})).fetchone()
         
         result = {
             "ok": True,
@@ -172,7 +172,7 @@ async def update_profile(
                     SET {', '.join(user_updates)}
                     WHERE id = :user_id
                 """)
-                db.execute(user_query, user_params)
+                await db.execute(user_query, user_params)
         
         # Update extended profile
         profile_updates = []
@@ -206,18 +206,18 @@ async def update_profile(
                 ON CONFLICT (user_id) DO UPDATE
                 SET {', '.join(profile_updates)}
             """)
-            db.execute(profile_query, profile_params)
+            await db.execute(profile_query, profile_params)
         
         # Log activity
-        db.execute(text("SELECT log_user_activity(:user_id, 'profile_update', NULL, NULL, NULL)"),
+        await db.execute(text("SELECT log_user_activity(:user_id, 'profile_update', NULL, NULL, NULL)"),
                   {"user_id": current_user["id"]})
         
-        db.commit()
+        await db.commit()
         
         return {"ok": True, "message": "Profile updated successfully"}
         
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -268,15 +268,15 @@ async def update_preferences(
             SET {', '.join(updates)}
         """)
         
-        db.execute(query, params)
-        db.commit()
+        await db.execute(query, params)
+        await db.commit()
         
         return {"ok": True, "message": "Preferences updated"}
         
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -298,7 +298,7 @@ async def get_app_preferences(
             WHERE user_id = :user_id
         """)
         
-        result = db.execute(query, {"user_id": current_user["id"]}).fetchone()
+        result = (await db.execute(query, {"user_id": current_user["id"]})).fetchone()
         
         if result:
             return {
@@ -394,15 +394,15 @@ async def update_app_preferences(
             SET {', '.join(updates)}
         """)
         
-        db.execute(query, params)
-        db.commit()
+        await db.execute(query, params)
+        await db.commit()
         
         return {"ok": True, "message": "App preferences updated"}
         
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -423,16 +423,16 @@ async def submit_feedback(
             RETURNING id
         """)
         
-        feedback_id = db.execute(query, {
+        feedback_id = (await db.execute(query, {
             "user_id": current_user["id"],
             "feedback_type": request.feedbackType,
             "category": request.category,
             "subject": request.subject,
             "message": request.message,
             "rating": request.rating
-        }).fetchone()[0]
+        })).fetchone()[0]
         
-        db.commit()
+        await db.commit()
         
         return {
             "ok": True,
@@ -441,7 +441,7 @@ async def submit_feedback(
         }
         
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -466,7 +466,7 @@ async def get_achievements(
             ORDER BY earned_at DESC
         """)
         
-        results = db.execute(query, {"user_id": current_user["id"]}).fetchall()
+        results = (await db.execute(query, {"user_id": current_user["id"]})).fetchall()
         
         achievements = []
         for row in results:
@@ -505,10 +505,10 @@ async def get_activity_log(
             LIMIT :limit
         """)
         
-        results = db.execute(query, {
+        results = (await db.execute(query, {
             "user_id": current_user["id"],
             "limit": limit
-        }).fetchall()
+        })).fetchall()
         
         activities = []
         for row in results:
@@ -533,12 +533,12 @@ async def refresh_statistics(
     Refresh user statistics
     """
     try:
-        db.execute(text("SELECT update_user_statistics(:user_id)"),
+        await db.execute(text("SELECT update_user_statistics(:user_id)"),
                   {"user_id": current_user["id"]})
-        db.commit()
+        await db.commit()
         
         return {"ok": True, "message": "Statistics refreshed"}
         
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
