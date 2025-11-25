@@ -389,25 +389,29 @@ async def generate_complaint_draft(payload: dict, request: Request):
             db = request.app.state.db
             print(f"[DEBUG] Fetching evidence for ID: {evidence_id}")
             result = await db.execute(text("""
-                SELECT evidence_type, caller_number, message_text, threat_level, scam_type,
-                       latitude, longitude, address, created_at
+                SELECT evidence_type, caller_number, threat_level, scam_type,
+                       latitude, longitude, address, created_at, ai_analysis
                 FROM evidence_vault
                 WHERE evidence_id = :evidence_id
             """), {"evidence_id": evidence_id})
             row = result.fetchone()
             print(f"[DEBUG] Row fetched: {row is not None}")
             if row:
+                # Extract analysis summary from ai_analysis JSONB if available
+                ai_analysis = row[8] if row[8] else {}
+                analysis_summary = ai_analysis.get("summary", "Loan harassment call detected")
+                
                 evidence = {
                     "id": evidence_id,
-                    "incident_date": row[8].isoformat() if row[8] else datetime.utcnow().isoformat(),
+                    "incident_date": row[7].isoformat() if row[7] else datetime.utcnow().isoformat(),
                     "caller_number": row[1] or "Unknown",
-                    "threat_level": row[3] or 0,
-                    "analysis_summary": row[2] or "Loan harassment call detected",
+                    "threat_level": row[2] or 0,
+                    "analysis_summary": analysis_summary,
                     "red_flags": ["Threatening language", "Loan harassment"],
                     "timeline": [],
-                    "latitude": row[5],
-                    "longitude": row[6],
-                    "address": row[7] or "Unknown",
+                    "latitude": row[4],
+                    "longitude": row[5],
+                    "address": row[6] or "Unknown",
                     "amount_lost": 0,
                     "platform": "Phone Call"
                 }
