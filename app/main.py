@@ -294,6 +294,10 @@ app.include_router(whatsapp_sms_protection.router)
 from . import complaint_filing
 app.include_router(complaint_filing.router)
 
+# Block 4 - S2: Complaint Filing V2 (evidence_id support)
+from . import complaint_filing_v2
+app.include_router(complaint_filing_v2.router)
+
 # Evidence Vault
 from . import evidence_vault
 app.include_router(evidence_vault.router)
