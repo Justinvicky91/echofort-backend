@@ -374,6 +374,7 @@ async def generate_complaint_draft(payload: dict, request: Request):
     
     scam_type = payload.get("scam_type", "unknown")
     evidence = payload.get("evidence", {})
+    evidence_id = payload.get("evidence_id")
     user_info = payload.get("user_info", {})
     bank_name = payload.get("bank_name")
     family_info = payload.get("family_info")  # For family plan
@@ -381,6 +382,35 @@ async def generate_complaint_draft(payload: dict, request: Request):
     
     if not user_info.get("name") or not user_info.get("phone"):
         raise HTTPException(400, "user_info.name and user_info.phone required")
+    
+    # BLOCK 4 FIX: If evidence_id is provided, fetch evidence from vault
+    if evidence_id and not evidence:
+        try:
+            db = request.app.state.db
+            result = await db.execute(text("""
+                SELECT evidence_type, caller_number, message_text, threat_level, scam_type,
+                       latitude, longitude, address, created_at
+                FROM evidence_vault
+                WHERE evidence_id = :evidence_id
+            """), {"evidence_id": evidence_id})
+            row = result.fetchone()
+            if row:
+                evidence = {
+                    "id": evidence_id,
+                    "incident_date": row[8].isoformat() if row[8] else datetime.utcnow().isoformat(),
+                    "caller_number": row[1] or "Unknown",
+                    "threat_level": row[3] or 0,
+                    "analysis_summary": row[2] or "Loan harassment call detected",
+                    "red_flags": ["Threatening language", "Loan harassment"],
+                    "timeline": [],
+                    "latitude": row[5],
+                    "longitude": row[6],
+                    "address": row[7] or "Unknown",
+                    "amount_lost": 0,
+                    "platform": "Phone Call"
+                }
+        except Exception as e:
+            print(f"Failed to fetch evidence: {e}")
     
     # Determine complaint routing
     complaint_type = determine_complaint_type(scam_type, evidence)
