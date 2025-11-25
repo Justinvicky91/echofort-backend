@@ -374,7 +374,6 @@ async def generate_complaint_draft(payload: dict, request: Request):
     
     scam_type = payload.get("scam_type", "unknown")
     evidence = payload.get("evidence", {})
-    evidence_id = payload.get("evidence_id")
     user_info = payload.get("user_info", {})
     bank_name = payload.get("bank_name")
     family_info = payload.get("family_info")  # For family plan
@@ -382,46 +381,6 @@ async def generate_complaint_draft(payload: dict, request: Request):
     
     if not user_info.get("name") or not user_info.get("phone"):
         raise HTTPException(400, "user_info.name and user_info.phone required")
-    
-    # BLOCK 4 FIX: If evidence_id is provided, fetch evidence from vault
-    if evidence_id and (not evidence or len(evidence) == 0):
-        try:
-            db = request.app.state.db
-            print(f"[DEBUG] Fetching evidence for ID: {evidence_id}")
-            result = await db.execute(text("""
-                SELECT evidence_type, caller_number, threat_level, scam_type,
-                       latitude, longitude, address, created_at, ai_analysis
-                FROM evidence_vault
-                WHERE evidence_id = :evidence_id
-            """), {"evidence_id": evidence_id})
-            row = result.fetchone()
-            print(f"[DEBUG] Row fetched: {row is not None}")
-            if row:
-                # Extract analysis summary from ai_analysis JSONB if available
-                ai_analysis = row[8] if row[8] else {}
-                analysis_summary = ai_analysis.get("summary", "Loan harassment call detected")
-                
-                evidence = {
-                    "id": evidence_id,
-                    "incident_date": row[7].isoformat() if row[7] else datetime.utcnow().isoformat(),
-                    "caller_number": row[1] or "Unknown",
-                    "threat_level": row[2] or 0,
-                    "analysis_summary": analysis_summary,
-                    "red_flags": ["Threatening language", "Loan harassment"],
-                    "timeline": [],
-                    "latitude": row[4],
-                    "longitude": row[5],
-                    "address": row[6] or "Unknown",
-                    "amount_lost": 0,
-                    "platform": "Phone Call"
-                }
-                print(f"[DEBUG] Evidence object created: {evidence.get('id')}")
-            else:
-                print(f"[DEBUG] No evidence found for ID: {evidence_id}")
-        except Exception as e:
-            print(f"[ERROR] Failed to fetch evidence: {e}")
-            import traceback
-            traceback.print_exc()
     
     # Determine complaint routing
     complaint_type = determine_complaint_type(scam_type, evidence)
