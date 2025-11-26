@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS ai_action_queue (
     payload JSONB NOT NULL,  -- The actual change data
     impact_summary TEXT NOT NULL,  -- Human-readable explanation
     status VARCHAR(50) DEFAULT 'PENDING',  -- 'PENDING', 'APPROVED', 'REJECTED', 'EXECUTED', 'FAILED'
-    approved_by UUID REFERENCES users(id),  -- Super Admin who approved
+    approved_by BIGINT REFERENCES users(id),  -- Super Admin who approved
     approved_at TIMESTAMP WITH TIME ZONE,
     executed_by VARCHAR(255),  -- 'ExecutionEngineV1', etc.
     executed_at TIMESTAMP WITH TIME ZONE,

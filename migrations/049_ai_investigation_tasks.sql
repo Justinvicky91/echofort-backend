@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS ai_investigation_tasks (
     target VARCHAR(255) NOT NULL,  -- What needs investigation (e.g., 'churn_rate', 'refund_spike')
     details JSONB NOT NULL,  -- Investigation details and context
     status VARCHAR(50) DEFAULT 'PENDING',  -- 'PENDING', 'IN_PROGRESS', 'RESOLVED', 'DISMISSED'
-    assigned_to UUID REFERENCES users(id),  -- Admin assigned to investigate
+    assigned_to BIGINT REFERENCES users(id),  -- Admin assigned to investigate
     assigned_at TIMESTAMP WITH TIME ZONE,
     resolved_at TIMESTAMP WITH TIME ZONE,
     resolution_notes TEXT,  -- Notes from the investigation
