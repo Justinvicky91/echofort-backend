@@ -147,6 +147,25 @@ async def mobile_register(payload: RegisterRequest, request: Request):
         
         user_id, username, email, phone, full_name = result
         
+        # Block 7: Log user consent to Terms v2.0 and Privacy v2.0
+        try:
+            from ..consent_logger import log_user_consent, CURRENT_TERMS_VERSION, CURRENT_PRIVACY_VERSION
+            ip_address = request.client.host if request.client else "unknown"
+            user_agent = request.headers.get("user-agent", "unknown")
+            await log_user_consent(
+                db=db,
+                user_id=str(user_id),
+                terms_version=CURRENT_TERMS_VERSION,
+                privacy_version=CURRENT_PRIVACY_VERSION,
+                consent_type="signup",
+                consent_channel="mobile",
+                ip_address=ip_address,
+                user_agent=user_agent
+            )
+        except Exception as consent_error:
+            # Don't fail registration if consent logging fails
+            print(f"[WARNING] Consent logging failed for user {user_id}: {consent_error}")
+        
         return {
             "ok": True,
             "message": "Registration successful",
