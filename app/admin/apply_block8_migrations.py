@@ -44,55 +44,56 @@ async def apply_block8_migrations():
         
         results = {}
         
-        # Connect to database
-        with psycopg.connect(database_url) as conn:
-            with conn.cursor() as cur:
-                # Get migrations directory
-                base = Path(__file__).resolve().parents[2]
-                mdir = base / "migrations"
+        # Get migrations directory
+        base = Path(__file__).resolve().parents[2]
+        mdir = base / "migrations"
+        
+        # Apply each migration in a separate transaction
+        for fname in migrations:
+            try:
+                migration_path = mdir / fname
                 
-                # Apply each migration
-                for fname in migrations:
-                    try:
-                        migration_path = mdir / fname
-                        
-                        if not migration_path.exists():
-                            results[fname] = {
-                                "success": False,
-                                "error": f"Migration file not found: {migration_path}"
-                            }
-                            continue
-                        
-                        # Read migration SQL
-                        sql = migration_path.read_text(encoding="utf-8")
-                        
-                        # Execute migration
+                if not migration_path.exists():
+                    results[fname] = {
+                        "success": False,
+                        "error": f"Migration file not found: {migration_path}"
+                    }
+                    continue
+                
+                # Read migration SQL
+                sql = migration_path.read_text(encoding="utf-8")
+                
+                # Execute migration in its own transaction
+                with psycopg.connect(database_url) as conn:
+                    with conn.cursor() as cur:
                         cur.execute(sql)
                         conn.commit()
-                        
-                        results[fname] = {
-                            "success": True,
-                            "message": "Migration applied successfully"
-                        }
-                        
-                    except Exception as e:
-                        # If error is "table already exists", that's OK (idempotent)
-                        error_msg = str(e)
-                        if "already exists" in error_msg.lower():
-                            results[fname] = {
-                                "success": True,
-                                "message": "Migration already applied (table exists)",
-                                "note": error_msg
-                            }
-                        else:
-                            results[fname] = {
-                                "success": False,
-                                "error": error_msg
-                            }
-                            # Don't stop on error, continue with next migration
                 
-                # Verify tables exist
-                verification = {}
+                results[fname] = {
+                    "success": True,
+                    "message": "Migration applied successfully"
+                }
+                
+            except Exception as e:
+                # If error is "table already exists", that's OK (idempotent)
+                error_msg = str(e)
+                if "already exists" in error_msg.lower():
+                    results[fname] = {
+                        "success": True,
+                        "message": "Migration already applied (table exists)",
+                        "note": error_msg
+                    }
+                else:
+                    results[fname] = {
+                        "success": False,
+                        "error": error_msg
+                    }
+                    # Don't stop on error, continue with next migration
+        
+        # Verify tables exist
+        verification = {}
+        with psycopg.connect(database_url) as conn:
+            with conn.cursor() as cur:
                 for table_name in ["ai_action_queue", "ai_pattern_library", "ai_investigation_tasks"]:
                     try:
                         cur.execute(f"SELECT COUNT(*) FROM {table_name};")
