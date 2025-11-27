@@ -173,13 +173,12 @@ class ThreatIntelligenceScanner:
             cur = conn.cursor(cursor_factory=RealDictCursor)
             cur.execute("""
                 INSERT INTO threat_intelligence_items 
-                (scan_id, source_id, scam_type, severity, confidence_score,
-                 phone_numbers, urls, keywords, raw_data, collected_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                (scan_id, scam_type, severity_score, confidence_score,
+                 extracted_phone_numbers, extracted_urls, extracted_keywords, content_text, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
                 RETURNING id
             """, (
                 scan_id,
-                source['id'],
                 scam_type,
                 severity,
                 0.75,  # Default confidence
@@ -263,7 +262,7 @@ class ThreatIntelligenceScanner:
                 SELECT 
                     jsonb_array_elements_text(phone_numbers::jsonb) as phone,
                     COUNT(*) as occurrence_count,
-                    array_agg(DISTINCT scam_type) as scam_types
+                    array_agg(DISTINCT scam_type) as scam_type
                 FROM threat_intelligence_items
                 WHERE scan_id = %s AND phone_numbers != '[]'
                 GROUP BY phone
@@ -275,17 +274,17 @@ class ThreatIntelligenceScanner:
             for pattern in phone_patterns:
                 cur.execute("""
                     INSERT INTO threat_patterns
-                    (pattern_type, pattern_value, occurrence_count, scam_types, 
+                    (pattern_type, pattern_name, occurrence_count, scam_type, 
                      first_seen, last_seen, is_active)
                     VALUES ('phone_number', %s, %s, %s, CURRENT_TIMESTAMP, 
                             CURRENT_TIMESTAMP, true)
-                    ON CONFLICT (pattern_type, pattern_value) 
+                    ON CONFLICT (pattern_type, pattern_name) 
                     DO UPDATE SET 
                         occurrence_count = threat_patterns.occurrence_count + EXCLUDED.occurrence_count,
                         last_seen = CURRENT_TIMESTAMP
                     RETURNING id
                 """, (pattern['phone'], pattern['occurrence_count'], 
-                      json.dumps(pattern['scam_types'])))
+                      json.dumps(pattern['scam_type'])))
                 
                 pattern_id = cur.fetchone()['id']
                 patterns.append({"id": pattern_id, "type": "phone_number"})
@@ -316,9 +315,9 @@ class ThreatIntelligenceScanner:
             for item in high_severity_items:
                 cur.execute("""
                     INSERT INTO threat_alerts
-                    (alert_type, severity, title, description, related_item_ids, 
-                     status, created_at)
-                    VALUES ('high_severity_threat', %s, %s, %s, %s, 'new', CURRENT_TIMESTAMP)
+                    (alert_type, alert_severity, alert_title, alert_message, alert_metadata, 
+                     is_acknowledged, is_resolved, created_at)
+                    VALUES ('high_severity_threat', %s, %s, %s, %s, false, false, CURRENT_TIMESTAMP)
                     RETURNING id
                 """, (
                     item['severity'],
