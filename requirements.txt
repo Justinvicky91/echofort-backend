@@ -24,3 +24,6 @@ twilio==9.0.4
 pyotp==2.9.0
 qrcode[pil]==7.4.2
 reportlab==4.0.7
+apscheduler==3.11.1
+beautifulsoup4==4.12.3
+requests==2.31.0

@@ -36,7 +36,7 @@ def pg_dsn_for_psycopg(raw: str) -> str:
 
 def make_app():
     s = get_settings()
-    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, ai_chat, ai_learning
+    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, ai_chat, ai_learning, threat_intelligence
     
     app = FastAPI(title="EchoFort API", version="1.0.0")
 
@@ -50,6 +50,7 @@ def make_app():
     app.include_router(apply_block8_migrations.router)
     app.include_router(ai_chat.router)
     app.include_router(ai_learning.router)
+    app.include_router(threat_intelligence.router)
     
     # Include autonomous AI assistant
     app.include_router(ai_assistant_autonomous.router)
@@ -227,7 +228,7 @@ def make_app():
         try:
             with psycopg.connect(dsn) as conn:
                 with conn.cursor() as cur:
-                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "040_user_activity_log_simple.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "042_recreate_invoices_table.sql", "034_add_user_kyc_fields.sql", "035_razorpay_tables.sql", "037_gps_and_family_safety.sql", "038_dpdp_compliance.sql", "039_user_activity_log_fix.sql", "043_create_evidence_vault.sql", "044_complaint_drafts.sql", "045_add_extremism_fields.sql", "046_user_consent_log.sql", "047_ai_action_queue.sql", "048_ai_pattern_library.sql", "049_ai_investigation_tasks.sql", "050_ai_learning_center.sql"]:
+                    for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "040_user_activity_log_simple.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "042_recreate_invoices_table.sql", "034_add_user_kyc_fields.sql", "035_razorpay_tables.sql", "037_gps_and_family_safety.sql", "038_dpdp_compliance.sql", "039_user_activity_log_fix.sql", "043_create_evidence_vault.sql", "044_complaint_drafts.sql", "045_add_extremism_fields.sql", "046_user_consent_log.sql", "047_ai_action_queue.sql", "048_ai_pattern_library.sql", "049_ai_investigation_tasks.sql", "050_ai_learning_center.sql", "051_threat_intelligence.sql"]:
                         sql = (mdir / fname).read_text(encoding="utf-8")
                         cur.execute(sql)
                 conn.commit()
@@ -371,4 +372,12 @@ app.include_router(promo_codes.router)
 # DPDP Compliance (Digital Personal Data Protection Act, 2023)
 from . import dpdp_compliance
 app.include_router(dpdp_compliance.router)
+
+# Start Threat Intelligence Scheduler (Block 15)
+from .threat_intel_scheduler import start_threat_intel_scheduler
+try:
+    start_threat_intel_scheduler()
+except Exception as e:
+    print(f"Warning: Failed to start threat intelligence scheduler: {e}")
+
 # Deployment trigger 1762361411
