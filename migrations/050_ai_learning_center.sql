@@ -11,11 +11,12 @@ CREATE TABLE IF NOT EXISTS ai_conversations (
     message_type VARCHAR(50) NOT NULL, -- 'user', 'assistant', 'system'
     message_text TEXT NOT NULL,
     message_metadata JSONB DEFAULT '{}', -- {tools_used, actions_created, source_refs, etc.}
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_ai_conversations_session (session_id),
-    INDEX idx_ai_conversations_user (user_id),
-    INDEX idx_ai_conversations_created (created_at DESC)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_session ON ai_conversations(session_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_created ON ai_conversations(created_at DESC);
 
 -- Table: ai_decisions
 -- Tracks all AI decisions and their outcomes for learning
@@ -29,11 +30,12 @@ CREATE TABLE IF NOT EXISTS ai_decisions (
     was_approved BOOLEAN DEFAULT NULL, -- NULL if not yet reviewed, TRUE/FALSE after review
     user_feedback TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at TIMESTAMP,
-    INDEX idx_ai_decisions_type (decision_type),
-    INDEX idx_ai_decisions_approved (was_approved),
-    INDEX idx_ai_decisions_created (created_at DESC)
+    reviewed_at TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_ai_decisions_type ON ai_decisions(decision_type);
+CREATE INDEX IF NOT EXISTS idx_ai_decisions_approved ON ai_decisions(was_approved);
+CREATE INDEX IF NOT EXISTS idx_ai_decisions_created ON ai_decisions(created_at DESC);
 
 -- Table: ai_daily_digests
 -- Stores daily summaries of AI activity and insights
@@ -48,9 +50,10 @@ CREATE TABLE IF NOT EXISTS ai_daily_digests (
     key_insights JSONB DEFAULT '[]', -- [{insight, category, importance}]
     platform_health_summary JSONB DEFAULT '{}', -- {uptime, errors, performance}
     recommendations JSONB DEFAULT '[]', -- [{recommendation, priority, reasoning}]
-    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_ai_daily_digests_date (digest_date DESC)
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_ai_daily_digests_date ON ai_daily_digests(digest_date DESC);
 
 -- Table: ai_learning_patterns
 -- Stores learned patterns from past interactions for improving future responses
@@ -62,10 +65,11 @@ CREATE TABLE IF NOT EXISTS ai_learning_patterns (
     usage_count INT DEFAULT 0,
     last_used_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_ai_learning_patterns_type (pattern_type),
-    INDEX idx_ai_learning_patterns_success (success_rate DESC)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_ai_learning_patterns_type ON ai_learning_patterns(pattern_type);
+CREATE INDEX IF NOT EXISTS idx_ai_learning_patterns_success ON ai_learning_patterns(success_rate DESC);
 
 -- Insert sample data for testing
 INSERT INTO ai_daily_digests (digest_date, total_conversations, total_decisions, key_insights, recommendations)
@@ -81,4 +85,4 @@ VALUES (
         {"recommendation": "Consider promotional campaign for Family Pack", "priority": "high", "reasoning": "Higher retention indicates strong product-market fit"},
         {"recommendation": "Increase monitoring for Digital Arrest scam patterns", "priority": "critical", "reasoning": "45% increase in threat activity"}
     ]'::jsonb
-);
+) ON CONFLICT (digest_date) DO NOTHING;
