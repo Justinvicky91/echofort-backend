@@ -106,8 +106,8 @@ async def list_threat_items(
         where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
         query = f"""
-            SELECT id, scan_id, source_id, scam_type, severity_score, 
-                   confidence_score, phone_numbers, urls, keywords, created_at
+            SELECT id, scan_id, source_url, scam_type, severity_score, 
+                   confidence_score, extracted_phone_numbers, extracted_urls, extracted_keywords, created_at
             FROM threat_intelligence_items
             {where_clause}
             ORDER BY created_at DESC
@@ -162,7 +162,7 @@ async def list_patterns(
         
         query = f"""
             SELECT id, pattern_type, pattern_name, occurrence_count, 
-                   scam_types, first_seen, last_seen, is_active
+                   scam_type, first_seen, last_seen, is_active
             FROM threat_patterns
             {where_clause}
             ORDER BY occurrence_count DESC, last_seen DESC
