@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from openai import OpenAI
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from ai_learning_center import store_conversation_message, track_ai_decision
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -345,6 +346,19 @@ def process_chat_message(
     Returns: {assistant_message, actions_created, source_refs}
     """
     
+    # Store user message in Learning Center
+    try:
+        user_conv_id = store_conversation_message(
+            session_id=session_id or "unknown",
+            user_id=user_id,
+            role=role,
+            message_type="user",
+            message_text=message
+        )
+    except Exception as e:
+        print(f"Warning: Failed to store user message in Learning Center: {e}")
+        user_conv_id = None
+    
     # Build system prompt
     system_prompt = f"""You are EchoFort AI, the intelligent assistant for the EchoFort platform.
 
@@ -426,8 +440,40 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
                         "result_summary": str(result)[:200]  # Truncate for brevity
                     })
         
+        response_text = assistant_message.content or "I've processed your request using internal tools."
+        
+        # Store assistant response in Learning Center
+        try:
+            assistant_conv_id = store_conversation_message(
+                session_id=session_id or "unknown",
+                user_id=user_id,
+                role="assistant",
+                message_type="assistant",
+                message_text=response_text,
+                metadata={
+                    "tools_used": [ref["value"] for ref in source_refs if ref["type"] == "tool"],
+                    "actions_created": actions_created
+                }
+            )
+            
+            # Track decision if actions were created
+            if actions_created:
+                track_ai_decision(
+                    conversation_id=assistant_conv_id,
+                    decision_type="action_proposal",
+                    decision_context={
+                        "query": message,
+                        "tools_used": [ref["value"] for ref in source_refs if ref["type"] == "tool"],
+                        "actions_created": actions_created,
+                        "reasoning": response_text[:500]
+                    },
+                    confidence_score=0.85  # Default confidence
+                )
+        except Exception as e:
+            print(f"Warning: Failed to store assistant response in Learning Center: {e}")
+        
         return {
-            "assistant_message": assistant_message.content or "I've processed your request using internal tools.",
+            "assistant_message": response_text,
             "actions_created": actions_created,
             "source_refs": source_refs
         }
