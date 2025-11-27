@@ -36,7 +36,7 @@ def pg_dsn_for_psycopg(raw: str) -> str:
 
 def make_app():
     s = get_settings()
-    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations
+    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, ai_chat
     
     app = FastAPI(title="EchoFort API", version="1.0.0")
 
@@ -48,6 +48,7 @@ def make_app():
     app.include_router(ai_analysis_trigger.router)
     app.include_router(ai_execution_trigger.router)
     app.include_router(apply_block8_migrations.router)
+    app.include_router(ai_chat.router)
     
     # Include autonomous AI assistant
     app.include_router(ai_assistant_autonomous.router)
