@@ -161,7 +161,7 @@ async def list_patterns(
         where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
         query = f"""
-            SELECT id, pattern_type, pattern_value, occurrence_count, 
+            SELECT id, pattern_type, pattern_name, occurrence_count, 
                    scam_types, first_seen, last_seen, is_active
             FROM threat_patterns
             {where_clause}
@@ -248,8 +248,8 @@ async def list_alerts(
         where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
         query = f"""
-            SELECT id, alert_type, severity_score, title, description, 
-                   related_item_ids, status, created_at, acknowledged_at, resolved_at
+            SELECT id, alert_type, alert_severity, alert_title, alert_message, 
+                   alert_metadata, created_at, acknowledged_at, resolved_at
             FROM threat_alerts
             {where_clause}
             ORDER BY created_at DESC
@@ -280,10 +280,10 @@ async def acknowledge_alert(alert_id: int):
         
         cur.execute("""
             UPDATE threat_alerts
-            SET status = 'acknowledged',
+            SET is_acknowledged = true,
                 acknowledged_at = CURRENT_TIMESTAMP
-            WHERE id = %s AND status = 'new'
-            RETURNING id, status
+            WHERE id = %s AND is_acknowledged = false
+            RETURNING id, is_acknowledged
         """, (alert_id,))
         
         result = cur.fetchone()
@@ -313,10 +313,10 @@ async def resolve_alert(alert_id: int):
         
         cur.execute("""
             UPDATE threat_alerts
-            SET status = 'resolved',
+            SET is_resolved = true,
                 resolved_at = CURRENT_TIMESTAMP
-            WHERE id = %s AND status IN ('new', 'acknowledged')
-            RETURNING id, status
+            WHERE id = %s AND is_resolved = false
+            RETURNING id, is_acknowledged
         """, (alert_id,))
         
         result = cur.fetchone()
@@ -434,7 +434,7 @@ async def get_statistics():
         cur.execute("""
             SELECT COUNT(*) as new_alerts
             FROM threat_alerts
-            WHERE scan_status = 'new'
+            WHERE is_acknowledged = false AND is_resolved = false
         """)
         
         alert_stats = cur.fetchone()
@@ -486,7 +486,7 @@ async def get_dashboard():
         
         # Active patterns
         cur.execute("""
-            SELECT id, pattern_type, pattern_value, occurrence_count
+            SELECT id, pattern_type, pattern_name, occurrence_count
             FROM threat_patterns
             WHERE is_active = true
             ORDER BY occurrence_count DESC
@@ -496,9 +496,9 @@ async def get_dashboard():
         
         # New alerts
         cur.execute("""
-            SELECT id, alert_type, severity_score, title, created_at
+            SELECT id, alert_type, alert_severity, alert_title, created_at
             FROM threat_alerts
-            WHERE scan_status = 'new'
+            WHERE is_acknowledged = false AND is_resolved = false
             ORDER BY created_at DESC
             LIMIT 10
         """)
