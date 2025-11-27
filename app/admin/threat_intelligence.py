@@ -1,667 +1,525 @@
 """
-Threat Intelligence API Endpoints - Block 15
+Threat Intelligence API Endpoints - Block 15 v2
 Admin routes for managing threat intelligence system
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query
+from typing import List, Optional, Dict, Any
 from datetime import datetime, date
 import json
-import asyncio
+import logging
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import os
 
-from app.database import get_db
-from app.threat_intelligence_scanner import ThreatIntelligenceScanner, run_scheduled_scan
+from app.threat_intelligence_scanner import ThreatIntelligenceScanner, run_threat_intelligence_scan
 
 router = APIRouter(prefix="/admin/threat-intel", tags=["Threat Intelligence"])
+logger = logging.getLogger(__name__)
+
+
+def get_db_connection():
+    """Get database connection"""
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
+        database=os.getenv("DB_NAME", "echofort"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "")
+    )
 
 
 @router.get("/scans")
 async def list_scans(
     limit: int = Query(20, ge=1, le=100),
-    status: Optional[str] = Query(None),
-    source: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    status: Optional[str] = Query(None)
 ):
     """
     List threat intelligence scans
     
     Query Parameters:
     - limit: Maximum number of scans to return (default: 20, max: 100)
-    - status: Filter by scan status (running, completed, failed)
-    - source: Filter by scan source
+    - status: Filter by scan status (in_progress, completed, failed)
     """
     try:
-        conditions = []
-        params = {"limit": limit}
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        query = """
+            SELECT id, status, started_at, completed_at, 
+                   items_found, patterns_detected, alerts_generated
+            FROM threat_intelligence_scans
+        """
         
         if status:
-            conditions.append("scan_status = :status")
-            params["status"] = status
+            query += " WHERE status = %s"
+            cur.execute(query + " ORDER BY started_at DESC LIMIT %s", (status, limit))
+        else:
+            cur.execute(query + " ORDER BY started_at DESC LIMIT %s", (limit,))
         
-        if source:
-            conditions.append("scan_source LIKE :source")
-            params["source"] = f"%{source}%"
+        scans = cur.fetchall()
         
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        cur.close()
+        conn.close()
         
-        query = text(f"""
-            SELECT 
-                id, scan_timestamp, scan_source, scan_status,
-                items_collected, new_patterns_detected, scan_duration_seconds,
-                error_message, created_at, completed_at
-            FROM threat_intelligence_scans
-            WHERE {where_clause}
-            ORDER BY scan_timestamp DESC
-            LIMIT :limit
-        """)
+        return {"scans": scans, "count": len(scans)}
         
-        result = db.execute(query, params)
-        scans = [dict(row._mapping) for row in result]
-        
-        return {
-            "success": True,
-            "scans": scans,
-            "count": len(scans)
-        }
-    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch scans: {str(e)}")
+        logger.error(f"Error listing scans: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/scans/trigger")
-async def trigger_manual_scan(
-    source_type: Optional[str] = Query(None, description="Specific source type to scan"),
-    db: Session = Depends(get_db)
-):
-    """
-    Manually trigger a threat intelligence scan
-    
-    Query Parameters:
-    - source_type: Optional specific source type to scan (twitter, news, government, reddit)
-    """
+async def trigger_scan():
+    """Manually trigger a threat intelligence scan"""
     try:
-        # Run scan in background
-        result = await run_scheduled_scan()
-        
-        return {
-            "success": True,
-            "message": "Scan triggered successfully",
-            "result": result
-        }
-    
+        result = run_threat_intelligence_scan()
+        return {"message": "Scan triggered successfully", "result": result}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to trigger scan: {str(e)}")
+        logger.error(f"Error triggering scan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/items")
 async def list_threat_items(
     limit: int = Query(50, ge=1, le=200),
     scam_type: Optional[str] = Query(None),
-    min_severity: Optional[int] = Query(None, ge=1, le=10),
-    verified_only: bool = Query(False),
-    db: Session = Depends(get_db)
+    min_severity: Optional[int] = Query(None, ge=1, le=10)
 ):
     """
-    List collected threat intelligence items
+    List threat intelligence items
     
     Query Parameters:
     - limit: Maximum number of items to return (default: 50, max: 200)
     - scam_type: Filter by scam type
-    - min_severity: Minimum severity score (1-10)
-    - verified_only: Only show verified items
+    - min_severity: Filter by minimum severity (1-10)
     """
     try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
         conditions = []
-        params = {"limit": limit}
+        params = []
         
         if scam_type:
-            conditions.append("scam_type = :scam_type")
-            params["scam_type"] = scam_type
+            conditions.append("scam_type = %s")
+            params.append(scam_type)
         
         if min_severity:
-            conditions.append("severity_score >= :min_severity")
-            params["min_severity"] = min_severity
+            conditions.append("severity >= %s")
+            params.append(min_severity)
         
-        if verified_only:
-            conditions.append("is_verified = TRUE")
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
-        
-        query = text(f"""
-            SELECT 
-                id, scan_id, source_url, source_type, content_text,
-                content_summary, extracted_phone_numbers, extracted_urls,
-                extracted_keywords, scam_type, severity_score, confidence_score,
-                geographic_context, is_verified, is_false_positive, created_at
+        query = f"""
+            SELECT id, scan_id, source_id, scam_type, severity, 
+                   confidence_score, phone_numbers, urls, keywords, collected_at
             FROM threat_intelligence_items
-            WHERE {where_clause}
-            ORDER BY created_at DESC, severity_score DESC
-            LIMIT :limit
-        """)
+            {where_clause}
+            ORDER BY collected_at DESC
+            LIMIT %s
+        """
         
-        result = db.execute(query, params)
-        items = []
+        params.append(limit)
+        cur.execute(query, tuple(params))
         
-        for row in result:
-            item = dict(row._mapping)
-            # Parse JSONB fields
-            item['extracted_phone_numbers'] = json.loads(item['extracted_phone_numbers'] or '[]')
-            item['extracted_urls'] = json.loads(item['extracted_urls'] or '[]')
-            item['extracted_keywords'] = json.loads(item['extracted_keywords'] or '[]')
-            items.append(item)
+        items = cur.fetchall()
         
-        return {
-            "success": True,
-            "items": items,
-            "count": len(items)
-        }
-    
+        cur.close()
+        conn.close()
+        
+        return {"items": items, "count": len(items)}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch items: {str(e)}")
-
-
-@router.post("/items/{item_id}/verify")
-async def verify_threat_item(
-    item_id: int,
-    is_valid: bool = Query(..., description="Is this a valid threat?"),
-    notes: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    """
-    Verify or mark a threat intelligence item as false positive
-    
-    Path Parameters:
-    - item_id: ID of the threat item
-    
-    Query Parameters:
-    - is_valid: True if valid threat, False if false positive
-    - notes: Optional verification notes
-    """
-    try:
-        query = text("""
-            UPDATE threat_intelligence_items
-            SET 
-                is_verified = TRUE,
-                is_false_positive = :is_false_positive,
-                verified_at = CURRENT_TIMESTAMP
-            WHERE id = :item_id
-            RETURNING id
-        """)
-        
-        result = db.execute(query, {
-            "item_id": item_id,
-            "is_false_positive": not is_valid
-        })
-        
-        if not result.first():
-            raise HTTPException(status_code=404, detail="Threat item not found")
-        
-        db.commit()
-        
-        return {
-            "success": True,
-            "message": f"Item marked as {'valid threat' if is_valid else 'false positive'}"
-        }
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to verify item: {str(e)}")
+        logger.error(f"Error listing items: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/patterns")
-async def list_threat_patterns(
-    limit: int = Query(50, ge=1, le=100),
+async def list_patterns(
+    limit: int = Query(50, ge=1, le=200),
     pattern_type: Optional[str] = Query(None),
-    scam_type: Optional[str] = Query(None),
-    active_only: bool = Query(True),
-    db: Session = Depends(get_db)
+    is_active: Optional[bool] = Query(None)
 ):
     """
     List detected threat patterns
     
     Query Parameters:
-    - limit: Maximum number of patterns to return (default: 50, max: 100)
-    - pattern_type: Filter by pattern type
-    - scam_type: Filter by scam type
-    - active_only: Only show active patterns (default: true)
+    - limit: Maximum number of patterns to return (default: 50, max: 200)
+    - pattern_type: Filter by pattern type (phone_number, url, keyword)
+    - is_active: Filter by active status
     """
     try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
         conditions = []
-        params = {"limit": limit}
+        params = []
         
         if pattern_type:
-            conditions.append("pattern_type = :pattern_type")
-            params["pattern_type"] = pattern_type
+            conditions.append("pattern_type = %s")
+            params.append(pattern_type)
         
-        if scam_type:
-            conditions.append("scam_type = :scam_type")
-            params["scam_type"] = scam_type
+        if is_active is not None:
+            conditions.append("is_active = %s")
+            params.append(is_active)
         
-        if active_only:
-            conditions.append("is_active = TRUE")
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
-        
-        query = text(f"""
-            SELECT 
-                id, pattern_type, pattern_name, pattern_description, pattern_data,
-                scam_type, severity_level, confidence_score, first_seen, last_seen,
-                occurrence_count, affected_users_count, is_active, is_auto_block,
-                created_at, updated_at
+        query = f"""
+            SELECT id, pattern_type, pattern_value, occurrence_count, 
+                   scam_types, first_seen, last_seen, is_active
             FROM threat_patterns
-            WHERE {where_clause}
-            ORDER BY last_seen DESC, occurrence_count DESC
-            LIMIT :limit
-        """)
+            {where_clause}
+            ORDER BY occurrence_count DESC, last_seen DESC
+            LIMIT %s
+        """
         
-        result = db.execute(query, params)
-        patterns = []
+        params.append(limit)
+        cur.execute(query, tuple(params))
         
-        for row in result:
-            pattern = dict(row._mapping)
-            # Parse JSONB field
-            pattern['pattern_data'] = json.loads(pattern['pattern_data'] or '{}')
-            patterns.append(pattern)
+        patterns = cur.fetchall()
         
-        return {
-            "success": True,
-            "patterns": patterns,
-            "count": len(patterns)
-        }
-    
+        cur.close()
+        conn.close()
+        
+        return {"patterns": patterns, "count": len(patterns)}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch patterns: {str(e)}")
+        logger.error(f"Error listing patterns: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/patterns/{pattern_id}/toggle")
-async def toggle_pattern_status(
-    pattern_id: int,
-    is_active: bool = Query(..., description="Activate or deactivate pattern"),
-    db: Session = Depends(get_db)
-):
-    """
-    Activate or deactivate a threat pattern
-    
-    Path Parameters:
-    - pattern_id: ID of the pattern
-    
-    Query Parameters:
-    - is_active: True to activate, False to deactivate
-    """
+async def toggle_pattern(pattern_id: int):
+    """Toggle pattern active status"""
     try:
-        query = text("""
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute("""
             UPDATE threat_patterns
-            SET 
-                is_active = :is_active,
-                updated_at = CURRENT_TIMESTAMP,
-                deactivated_at = CASE WHEN :is_active = FALSE THEN CURRENT_TIMESTAMP ELSE NULL END
-            WHERE id = :pattern_id
-            RETURNING id
-        """)
+            SET is_active = NOT is_active
+            WHERE id = %s
+            RETURNING id, is_active
+        """, (pattern_id,))
         
-        result = db.execute(query, {
-            "pattern_id": pattern_id,
-            "is_active": is_active
-        })
+        result = cur.fetchone()
         
-        if not result.first():
+        if not result:
             raise HTTPException(status_code=404, detail="Pattern not found")
         
-        db.commit()
+        conn.commit()
+        cur.close()
+        conn.close()
         
-        return {
-            "success": True,
-            "message": f"Pattern {'activated' if is_active else 'deactivated'} successfully"
-        }
-    
+        return {"message": "Pattern status toggled", "pattern": result}
+        
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to toggle pattern: {str(e)}")
+        logger.error(f"Error toggling pattern: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/alerts")
-async def list_threat_alerts(
-    limit: int = Query(20, ge=1, le=100),
-    alert_type: Optional[str] = Query(None),
-    severity: Optional[str] = Query(None),
-    unacknowledged_only: bool = Query(False),
-    db: Session = Depends(get_db)
+async def list_alerts(
+    limit: int = Query(50, ge=1, le=200),
+    status: Optional[str] = Query(None),
+    min_severity: Optional[int] = Query(None, ge=1, le=10)
 ):
     """
     List threat alerts
     
     Query Parameters:
-    - limit: Maximum number of alerts to return (default: 20, max: 100)
-    - alert_type: Filter by alert type
-    - severity: Filter by severity (low, medium, high, critical)
-    - unacknowledged_only: Only show unacknowledged alerts
+    - limit: Maximum number of alerts to return (default: 50, max: 200)
+    - status: Filter by status (new, acknowledged, resolved)
+    - min_severity: Filter by minimum severity (1-10)
     """
     try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
         conditions = []
-        params = {"limit": limit}
+        params = []
         
-        if alert_type:
-            conditions.append("alert_type = :alert_type")
-            params["alert_type"] = alert_type
+        if status:
+            conditions.append("status = %s")
+            params.append(status)
         
-        if severity:
-            conditions.append("alert_severity = :severity")
-            params["severity"] = severity
+        if min_severity:
+            conditions.append("severity >= %s")
+            params.append(min_severity)
         
-        if unacknowledged_only:
-            conditions.append("is_acknowledged = FALSE")
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
-        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        query = f"""
+            SELECT id, alert_type, severity, title, description, 
+                   related_item_ids, status, created_at, acknowledged_at, resolved_at
+            FROM threat_alerts
+            {where_clause}
+            ORDER BY created_at DESC
+            LIMIT %s
+        """
         
-        query = text(f"""
-            SELECT 
-                a.id, a.pattern_id, a.alert_type, a.alert_title, a.alert_message,
-                a.alert_severity, a.affected_users_count, a.recommended_actions,
-                a.alert_metadata, a.is_acknowledged, a.is_resolved,
-                a.created_at, a.acknowledged_at, a.resolved_at,
-                p.pattern_name, p.scam_type
-            FROM threat_alerts a
-            LEFT JOIN threat_patterns p ON a.pattern_id = p.id
-            WHERE {where_clause}
-            ORDER BY a.created_at DESC
-            LIMIT :limit
-        """)
+        params.append(limit)
+        cur.execute(query, tuple(params))
         
-        result = db.execute(query, params)
-        alerts = []
+        alerts = cur.fetchall()
         
-        for row in result:
-            alert = dict(row._mapping)
-            # Parse JSONB fields
-            alert['recommended_actions'] = json.loads(alert['recommended_actions'] or '[]')
-            alert['alert_metadata'] = json.loads(alert['alert_metadata'] or '{}')
-            alerts.append(alert)
+        cur.close()
+        conn.close()
         
-        return {
-            "success": True,
-            "alerts": alerts,
-            "count": len(alerts)
-        }
-    
+        return {"alerts": alerts, "count": len(alerts)}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch alerts: {str(e)}")
+        logger.error(f"Error listing alerts: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/alerts/{alert_id}/acknowledge")
-async def acknowledge_alert(
-    alert_id: int,
-    notes: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
-    """
-    Acknowledge a threat alert
-    
-    Path Parameters:
-    - alert_id: ID of the alert
-    
-    Query Parameters:
-    - notes: Optional acknowledgment notes
-    """
+async def acknowledge_alert(alert_id: int):
+    """Acknowledge a threat alert"""
     try:
-        query = text("""
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute("""
             UPDATE threat_alerts
-            SET 
-                is_acknowledged = TRUE,
+            SET status = 'acknowledged',
                 acknowledged_at = CURRENT_TIMESTAMP
-            WHERE id = :alert_id
-            RETURNING id
-        """)
+            WHERE id = %s AND status = 'new'
+            RETURNING id, status
+        """, (alert_id,))
         
-        result = db.execute(query, {"alert_id": alert_id})
+        result = cur.fetchone()
         
-        if not result.first():
-            raise HTTPException(status_code=404, detail="Alert not found")
+        if not result:
+            raise HTTPException(status_code=404, detail="Alert not found or already acknowledged")
         
-        db.commit()
+        conn.commit()
+        cur.close()
+        conn.close()
         
-        return {
-            "success": True,
-            "message": "Alert acknowledged successfully"
-        }
-    
+        return {"message": "Alert acknowledged", "alert": result}
+        
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to acknowledge alert: {str(e)}")
+        logger.error(f"Error acknowledging alert: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/alerts/{alert_id}/resolve")
-async def resolve_alert(
-    alert_id: int,
-    resolution_notes: str = Query(..., description="Resolution notes"),
-    db: Session = Depends(get_db)
-):
-    """
-    Resolve a threat alert
-    
-    Path Parameters:
-    - alert_id: ID of the alert
-    
-    Query Parameters:
-    - resolution_notes: Notes describing how the alert was resolved
-    """
+async def resolve_alert(alert_id: int):
+    """Resolve a threat alert"""
     try:
-        query = text("""
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute("""
             UPDATE threat_alerts
-            SET 
-                is_resolved = TRUE,
-                resolved_at = CURRENT_TIMESTAMP,
-                resolution_notes = :notes
-            WHERE id = :alert_id
-            RETURNING id
-        """)
+            SET status = 'resolved',
+                resolved_at = CURRENT_TIMESTAMP
+            WHERE id = %s AND status IN ('new', 'acknowledged')
+            RETURNING id, status
+        """, (alert_id,))
         
-        result = db.execute(query, {
-            "alert_id": alert_id,
-            "notes": resolution_notes
-        })
+        result = cur.fetchone()
         
-        if not result.first():
-            raise HTTPException(status_code=404, detail="Alert not found")
+        if not result:
+            raise HTTPException(status_code=404, detail="Alert not found or already resolved")
         
-        db.commit()
+        conn.commit()
+        cur.close()
+        conn.close()
         
-        return {
-            "success": True,
-            "message": "Alert resolved successfully"
-        }
-    
+        return {"message": "Alert resolved", "alert": result}
+        
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to resolve alert: {str(e)}")
+        logger.error(f"Error resolving alert: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/sources")
-async def list_threat_sources(
-    enabled_only: bool = Query(False),
-    db: Session = Depends(get_db)
-):
-    """
-    List configured threat intelligence sources
-    
-    Query Parameters:
-    - enabled_only: Only show enabled sources
-    """
+async def list_sources():
+    """List all threat intelligence sources"""
     try:
-        condition = "WHERE is_enabled = TRUE" if enabled_only else ""
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        query = text(f"""
-            SELECT 
-                id, source_name, source_type, source_url, is_enabled,
-                scan_frequency_hours, last_scan_at, last_scan_status,
-                success_rate, total_scans, total_items_collected,
-                created_at, updated_at
+        cur.execute("""
+            SELECT id, name, source_type, url, keywords, is_active, priority
             FROM threat_intel_sources
-            {condition}
-            ORDER BY source_name
+            ORDER BY priority DESC, name ASC
         """)
         
-        result = db.execute(query)
-        sources = [dict(row._mapping) for row in result]
+        sources = cur.fetchall()
         
-        return {
-            "success": True,
-            "sources": sources,
-            "count": len(sources)
-        }
-    
+        cur.close()
+        conn.close()
+        
+        return {"sources": sources, "count": len(sources)}
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch sources: {str(e)}")
+        logger.error(f"Error listing sources: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/sources/{source_id}/toggle")
-async def toggle_source_status(
-    source_id: int,
-    is_enabled: bool = Query(..., description="Enable or disable source"),
-    db: Session = Depends(get_db)
-):
-    """
-    Enable or disable a threat intelligence source
-    
-    Path Parameters:
-    - source_id: ID of the source
-    
-    Query Parameters:
-    - is_enabled: True to enable, False to disable
-    """
+async def toggle_source(source_id: int):
+    """Toggle source active status"""
     try:
-        query = text("""
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        cur.execute("""
             UPDATE threat_intel_sources
-            SET 
-                is_enabled = :is_enabled,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = :source_id
-            RETURNING id
-        """)
+            SET is_active = NOT is_active
+            WHERE id = %s
+            RETURNING id, name, is_active
+        """, (source_id,))
         
-        result = db.execute(query, {
-            "source_id": source_id,
-            "is_enabled": is_enabled
-        })
+        result = cur.fetchone()
         
-        if not result.first():
+        if not result:
             raise HTTPException(status_code=404, detail="Source not found")
         
-        db.commit()
+        conn.commit()
+        cur.close()
+        conn.close()
         
-        return {
-            "success": True,
-            "message": f"Source {'enabled' if is_enabled else 'disabled'} successfully"
-        }
-    
+        return {"message": "Source status toggled", "source": result}
+        
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to toggle source: {str(e)}")
+        logger.error(f"Error toggling source: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/stats")
-async def get_threat_intel_stats(
-    days: int = Query(30, ge=1, le=90, description="Number of days to include in stats"),
-    db: Session = Depends(get_db)
-):
-    """
-    Get threat intelligence statistics
-    
-    Query Parameters:
-    - days: Number of days to include (default: 30, max: 90)
-    """
+async def get_statistics():
+    """Get threat intelligence statistics"""
     try:
-        # Overall stats
-        overall_query = text("""
-            SELECT 
-                COUNT(*) as total_scans,
-                SUM(items_collected) as total_items,
-                (SELECT COUNT(*) FROM threat_patterns WHERE is_active = TRUE) as active_patterns,
-                (SELECT COUNT(*) FROM threat_alerts WHERE is_acknowledged = FALSE) as pending_alerts
-            FROM threat_intelligence_scans
-            WHERE scan_timestamp > CURRENT_TIMESTAMP - INTERVAL ':days days'
-        """)
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
         
-        overall_result = db.execute(overall_query, {"days": days}).first()
-        
-        # Daily stats
-        daily_query = text("""
-            SELECT 
-                stat_date, total_scans, successful_scans, failed_scans,
-                total_items_collected, new_patterns_detected, alerts_generated,
-                top_scam_types, top_sources
+        # Get latest statistics
+        cur.execute("""
+            SELECT total_scans, total_items, total_patterns, total_alerts,
+                   avg_severity, most_common_scam_type, stats_date
             FROM threat_intel_statistics
-            WHERE stat_date > CURRENT_DATE - INTERVAL ':days days'
-            ORDER BY stat_date DESC
+            ORDER BY stats_date DESC
+            LIMIT 1
         """)
         
-        daily_result = db.execute(daily_query, {"days": days})
-        daily_stats = []
+        latest_stats = cur.fetchone()
         
-        for row in daily_result:
-            stat = dict(row._mapping)
-            stat['top_scam_types'] = json.loads(stat['top_scam_types'] or '[]')
-            stat['top_sources'] = json.loads(stat['top_sources'] or '[]')
-            daily_stats.append(stat)
-        
-        # Scam type distribution
-        scam_type_query = text("""
-            SELECT scam_type, COUNT(*) as count
-            FROM threat_intelligence_items
-            WHERE created_at > CURRENT_TIMESTAMP - INTERVAL ':days days'
-            AND scam_type IS NOT NULL
-            GROUP BY scam_type
-            ORDER BY count DESC
+        # Get real-time counts
+        cur.execute("""
+            SELECT 
+                COUNT(*) FILTER (WHERE status = 'in_progress') as active_scans,
+                COUNT(*) FILTER (WHERE status = 'completed') as completed_scans,
+                COUNT(*) FILTER (WHERE status = 'failed') as failed_scans
+            FROM threat_intelligence_scans
         """)
         
-        scam_type_result = db.execute(scam_type_query, {"days": days})
-        scam_types = [dict(row._mapping) for row in scam_type_result]
+        scan_stats = cur.fetchone()
+        
+        cur.execute("""
+            SELECT COUNT(*) as active_patterns
+            FROM threat_patterns
+            WHERE is_active = true
+        """)
+        
+        pattern_stats = cur.fetchone()
+        
+        cur.execute("""
+            SELECT COUNT(*) as new_alerts
+            FROM threat_alerts
+            WHERE status = 'new'
+        """)
+        
+        alert_stats = cur.fetchone()
+        
+        cur.close()
+        conn.close()
         
         return {
-            "success": True,
-            "stats": {
-                "overall": dict(overall_result._mapping) if overall_result else {},
-                "daily": daily_stats,
-                "scam_type_distribution": scam_types
+            "latest_statistics": latest_stats,
+            "real_time": {
+                "active_scans": scan_stats['active_scans'],
+                "completed_scans": scan_stats['completed_scans'],
+                "failed_scans": scan_stats['failed_scans'],
+                "active_patterns": pattern_stats['active_patterns'],
+                "new_alerts": alert_stats['new_alerts']
             }
         }
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch stats: {str(e)}")
-
-
-@router.get("/stats/dashboard")
-async def get_dashboard_stats(db: Session = Depends(get_db)):
-    """Get high-level dashboard statistics for threat intelligence"""
-    try:
-        query = text("""
-            SELECT 
-                (SELECT COUNT(*) FROM threat_intelligence_scans WHERE scan_status = 'completed' AND scan_timestamp > CURRENT_TIMESTAMP - INTERVAL '7 days') as scans_last_7_days,
-                (SELECT COUNT(*) FROM threat_intelligence_items WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '7 days') as items_last_7_days,
-                (SELECT COUNT(*) FROM threat_patterns WHERE is_active = TRUE) as active_patterns,
-                (SELECT COUNT(*) FROM threat_alerts WHERE is_acknowledged = FALSE) as pending_alerts,
-                (SELECT COUNT(*) FROM threat_alerts WHERE is_resolved = FALSE) as unresolved_alerts,
-                (SELECT scam_type FROM threat_intelligence_items WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '7 days' AND scam_type IS NOT NULL GROUP BY scam_type ORDER BY COUNT(*) DESC LIMIT 1) as top_scam_type_7_days,
-                (SELECT AVG(severity_score) FROM threat_intelligence_items WHERE created_at > CURRENT_TIMESTAMP - INTERVAL '7 days') as avg_severity_7_days
-        """)
         
-        result = db.execute(query).first()
+    except Exception as e:
+        logger.error(f"Error getting statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/dashboard")
+async def get_dashboard():
+    """Get threat intelligence dashboard summary"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Recent scans
+        cur.execute("""
+            SELECT id, status, started_at, completed_at, items_found
+            FROM threat_intelligence_scans
+            ORDER BY started_at DESC
+            LIMIT 5
+        """)
+        recent_scans = cur.fetchall()
+        
+        # High severity items
+        cur.execute("""
+            SELECT id, scam_type, severity, collected_at
+            FROM threat_intelligence_items
+            WHERE severity >= 8
+            ORDER BY collected_at DESC
+            LIMIT 10
+        """)
+        high_severity_items = cur.fetchall()
+        
+        # Active patterns
+        cur.execute("""
+            SELECT id, pattern_type, pattern_value, occurrence_count
+            FROM threat_patterns
+            WHERE is_active = true
+            ORDER BY occurrence_count DESC
+            LIMIT 10
+        """)
+        active_patterns = cur.fetchall()
+        
+        # New alerts
+        cur.execute("""
+            SELECT id, alert_type, severity, title, created_at
+            FROM threat_alerts
+            WHERE status = 'new'
+            ORDER BY created_at DESC
+            LIMIT 10
+        """)
+        new_alerts = cur.fetchall()
+        
+        cur.close()
+        conn.close()
         
         return {
-            "success": True,
-            "dashboard": dict(result._mapping) if result else {}
+            "recent_scans": recent_scans,
+            "high_severity_items": high_severity_items,
+            "active_patterns": active_patterns,
+            "new_alerts": new_alerts
         }
-    
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch dashboard stats: {str(e)}")
+        logger.error(f"Error getting dashboard: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

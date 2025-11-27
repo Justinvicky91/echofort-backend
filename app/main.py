@@ -36,7 +36,7 @@ def pg_dsn_for_psycopg(raw: str) -> str:
 
 def make_app():
     s = get_settings()
-    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, apply_block14_15_migrations, apply_block16_migrations, ai_chat, ai_learning, ai_investigation_api
+    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, apply_block14_15_migrations, apply_block16_migrations, ai_chat, ai_learning, ai_investigation_api, threat_intelligence
     
     app = FastAPI(title="EchoFort API", version="1.0.0")
 
@@ -53,8 +53,8 @@ def make_app():
     app.include_router(ai_chat.router)
     app.include_router(ai_learning.router)
     app.include_router(ai_investigation_api.router)
-    # Block 15 (Threat Intelligence) temporarily disabled - will re-enable in v2
-    # app.include_router(threat_intelligence.router)
+    # Block 15 v2 (Threat Intelligence) - Re-enabled with psycopg2 pattern
+    app.include_router(threat_intelligence.router)
     
     # Include autonomous AI assistant
     app.include_router(ai_assistant_autonomous.router)
@@ -377,12 +377,14 @@ app.include_router(promo_codes.router)
 from . import dpdp_compliance
 app.include_router(dpdp_compliance.router)
 
-# Start Threat Intelligence Scheduler (Block 15)
-# Temporarily disabled to unblock deployment - will re-enable after testing
-# from app.threat_intel_scheduler import start_threat_intel_scheduler
-# try:
-#     start_threat_intel_scheduler()
-# except Exception as e:
-#     print(f"Warning: Failed to start threat intelligence scheduler: {e}")
+# Start Threat Intelligence Scheduler (Block 15 v2)
+# Wrapped in try/except to prevent backend crashes
+from app.threat_intel_scheduler import start_threat_intel_scheduler
+try:
+    start_threat_intel_scheduler()
+    print("✅ Threat Intelligence Scheduler started")
+except Exception as e:
+    print(f"⚠️ Warning: Failed to start threat intelligence scheduler: {e}")
+    print("⚠️ Backend will continue without scheduler. Manual scans still available via API.")
 
 # Deployment trigger 1762361411

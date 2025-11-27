@@ -1,12 +1,16 @@
 """
-Threat Intelligence Scheduler - Block 15
+Threat Intelligence Scheduler - Block 15 v2
 Sets up 12-hour cron job for automated threat intelligence scans
 """
 
 import logging
+import os
+import psycopg2
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
+
+from app.threat_intelligence_scanner import run_threat_intelligence_scan
 
 logger = logging.getLogger(__name__)
 
@@ -14,34 +18,47 @@ logger = logging.getLogger(__name__)
 scheduler = None
 
 
+def get_db_connection():
+    """Get database connection"""
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        port=os.getenv("DB_PORT", "5432"),
+        database=os.getenv("DB_NAME", "echofort"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD", "")
+    )
+
+
 def start_threat_intel_scheduler():
     """
     Start the threat intelligence scheduler
     Runs scans every 12 hours (midnight and noon IST)
+    Wrapped in try/except to prevent backend crashes
     """
     global scheduler
     
     try:
         if scheduler is not None:
-            logger.warning("Scheduler already running")
+            logger.warning("Threat Intelligence Scheduler already running")
             return
+        
+        logger.info("Starting Threat Intelligence Scheduler...")
         
         scheduler = BackgroundScheduler()
         
         # Schedule 12-hour scans
         # Cron: 0 0,12 * * * (midnight and noon every day)
         # IST = UTC+5:30, so we run at 18:30 and 6:30 UTC for midnight and noon IST
-        # Commented out until scanner is fully tested
-        # scheduler.add_job(
-        #     run_scheduled_scan,
-        #     trigger=CronTrigger(hour='6,18', minute=30),  # 12:00 AM and 12:00 PM IST
-        #     id='threat_intel_12hour_scan',
-        #     name='Threat Intelligence 12-Hour Scan',
-        #     replace_existing=True,
-        #     misfire_grace_time=3600  # Allow 1 hour grace period if server was down
-        # )
+        scheduler.add_job(
+            run_threat_intelligence_scan,
+            trigger=CronTrigger(hour='6,18', minute=30),  # 12:00 AM and 12:00 PM IST
+            id='threat_intel_12hour_scan',
+            name='Threat Intelligence 12-Hour Scan',
+            replace_existing=True,
+            misfire_grace_time=3600  # Allow 1 hour grace period if server was down
+        )
         
-        # Optional: Daily statistics generation at 11:59 PM IST (18:29 UTC)
+        # Daily statistics generation at 11:59 PM IST (18:29 UTC)
         scheduler.add_job(
             generate_daily_statistics,
             trigger=CronTrigger(hour=18, minute=29),
@@ -51,38 +68,48 @@ def start_threat_intel_scheduler():
         )
     
         scheduler.start()
-        logger.info("Threat Intelligence Scheduler started")
-        logger.info("Scheduler running with daily statistics job")
+        logger.info("✅ Threat Intelligence Scheduler started successfully")
+        logger.info("📅 Scheduled jobs:")
+        logger.info("  - 12-hour scans at 12:00 AM and 12:00 PM IST")
+        logger.info("  - Daily statistics at 11:59 PM IST")
+        
     except Exception as e:
-        logger.error(f"Failed to start Threat Intelligence Scheduler: {e}")
-        logger.warning("Backend will continue without scheduler")
+        logger.error(f"❌ Failed to start Threat Intelligence Scheduler: {e}")
+        logger.warning("⚠️ Backend will continue without scheduler")
+        logger.warning("⚠️ Manual scans can still be triggered via API")
+        # Don't raise - allow backend to continue
 
 
 def stop_threat_intel_scheduler():
     """Stop the threat intelligence scheduler"""
     global scheduler
     
-    if scheduler is not None:
-        scheduler.shutdown()
-        scheduler = None
-        logger.info("Threat Intelligence Scheduler stopped")
+    try:
+        if scheduler is not None:
+            scheduler.shutdown()
+            scheduler = None
+            logger.info("Threat Intelligence Scheduler stopped")
+    except Exception as e:
+        logger.error(f"Error stopping scheduler: {e}")
 
 
 def generate_daily_statistics():
     """Generate daily statistics for threat intelligence"""
-    from app.database import get_db
-    from sqlalchemy import text
-    
-    db = next(get_db())
     try:
-        query = text("SELECT generate_threat_intel_daily_stats(CURRENT_DATE)")
-        db.execute(query)
-        db.commit()
-        logger.info("Daily threat intelligence statistics generated")
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Call the database function to generate statistics
+        cur.execute("SELECT generate_threat_intel_daily_stats(CURRENT_DATE)")
+        conn.commit()
+        
+        cur.close()
+        conn.close()
+        
+        logger.info("✅ Daily threat intelligence statistics generated")
+        
     except Exception as e:
-        logger.error(f"Failed to generate daily statistics: {e}")
-    finally:
-        db.close()
+        logger.error(f"❌ Failed to generate daily statistics: {e}")
 
 
 def get_scheduler_status():
@@ -108,26 +135,3 @@ def get_scheduler_status():
         "running": True,
         "jobs": jobs
     }
-
-
-# For manual testing
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    
-    print("Starting Threat Intelligence Scheduler...")
-    start_threat_intel_scheduler()
-    
-    print("\nScheduler Status:")
-    status = get_scheduler_status()
-    print(f"Running: {status['running']}")
-    print(f"Jobs: {len(status['jobs'])}")
-    for job in status['jobs']:
-        print(f"  - {job['name']}: Next run at {job['next_run_time']}")
-    
-    print("\nPress Ctrl+C to stop...")
-    try:
-        asyncio.get_event_loop().run_forever()
-    except KeyboardInterrupt:
-        print("\nStopping scheduler...")
-        stop_threat_intel_scheduler()
-        print("Scheduler stopped")
