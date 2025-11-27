@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from openai import OpenAI
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from ai_learning_center import store_conversation_message, track_ai_decision
+from app.ai_learning_center import store_conversation_message, track_ai_decision
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

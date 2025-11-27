@@ -7,9 +7,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime, date
-import sys
-sys.path.append('..')
-from ai_learning_center import (
+from app.ai_learning_center import (
     get_conversation_history,
     get_recent_decisions,
     get_daily_digest,
