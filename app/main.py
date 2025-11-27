@@ -36,7 +36,7 @@ def pg_dsn_for_psycopg(raw: str) -> str:
 
 def make_app():
     s = get_settings()
-    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, ai_chat, ai_learning
+    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, apply_block14_15_migrations, ai_chat, ai_learning
     
     app = FastAPI(title="EchoFort API", version="1.0.0")
 
@@ -48,6 +48,7 @@ def make_app():
     app.include_router(ai_analysis_trigger.router)
     app.include_router(ai_execution_trigger.router)
     app.include_router(apply_block8_migrations.router)
+    app.include_router(apply_block14_15_migrations.router)
     app.include_router(ai_chat.router)
     app.include_router(ai_learning.router)
     # Block 15 (Threat Intelligence) temporarily disabled - will re-enable in v2
