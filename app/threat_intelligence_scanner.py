@@ -19,14 +19,8 @@ logger = logging.getLogger(__name__)
 
 # Database connection helper
 def get_db_connection():
-    """Get database connection using psycopg2"""
-    return psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        port=os.getenv("DB_PORT", "5432"),
-        database=os.getenv("DB_NAME", "echofort"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD", "")
-    )
+    """Get database connection using DATABASE_URL environment variable"""
+    return psycopg2.connect(os.getenv("DATABASE_URL"))
 
 # Scam type keywords for classification
 SCAM_KEYWORDS = {
