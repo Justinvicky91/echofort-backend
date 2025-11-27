@@ -3,13 +3,10 @@ Threat Intelligence Scheduler - Block 15
 Sets up 12-hour cron job for automated threat intelligence scans
 """
 
-import asyncio
 import logging
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
-
-from app.threat_intelligence_scanner import run_scheduled_scan
 
 logger = logging.getLogger(__name__)
 
@@ -24,36 +21,41 @@ def start_threat_intel_scheduler():
     """
     global scheduler
     
-    if scheduler is not None:
-        logger.warning("Scheduler already running")
-        return
+    try:
+        if scheduler is not None:
+            logger.warning("Scheduler already running")
+            return
+        
+        scheduler = BackgroundScheduler()
+        
+        # Schedule 12-hour scans
+        # Cron: 0 0,12 * * * (midnight and noon every day)
+        # IST = UTC+5:30, so we run at 18:30 and 6:30 UTC for midnight and noon IST
+        # Commented out until scanner is fully tested
+        # scheduler.add_job(
+        #     run_scheduled_scan,
+        #     trigger=CronTrigger(hour='6,18', minute=30),  # 12:00 AM and 12:00 PM IST
+        #     id='threat_intel_12hour_scan',
+        #     name='Threat Intelligence 12-Hour Scan',
+        #     replace_existing=True,
+        #     misfire_grace_time=3600  # Allow 1 hour grace period if server was down
+        # )
+        
+        # Optional: Daily statistics generation at 11:59 PM IST (18:29 UTC)
+        scheduler.add_job(
+            generate_daily_statistics,
+            trigger=CronTrigger(hour=18, minute=29),
+            id='threat_intel_daily_stats',
+            name='Threat Intelligence Daily Statistics',
+            replace_existing=True
+        )
     
-    scheduler = AsyncIOScheduler()
-    
-    # Schedule 12-hour scans
-    # Cron: 0 0,12 * * * (midnight and noon every day)
-    # IST = UTC+5:30, so we run at 18:30 and 6:30 UTC for midnight and noon IST
-    scheduler.add_job(
-        run_scheduled_scan,
-        trigger=CronTrigger(hour='6,18', minute=30),  # 12:00 AM and 12:00 PM IST
-        id='threat_intel_12hour_scan',
-        name='Threat Intelligence 12-Hour Scan',
-        replace_existing=True,
-        misfire_grace_time=3600  # Allow 1 hour grace period if server was down
-    )
-    
-    # Optional: Daily statistics generation at 11:59 PM IST (18:29 UTC)
-    scheduler.add_job(
-        generate_daily_statistics,
-        trigger=CronTrigger(hour=18, minute=29),
-        id='threat_intel_daily_stats',
-        name='Threat Intelligence Daily Statistics',
-        replace_existing=True
-    )
-    
-    scheduler.start()
-    logger.info("Threat Intelligence Scheduler started")
-    logger.info("Next scan scheduled at: 12:00 AM and 12:00 PM IST (6:30 AM and 6:30 PM UTC)")
+        scheduler.start()
+        logger.info("Threat Intelligence Scheduler started")
+        logger.info("Scheduler running with daily statistics job")
+    except Exception as e:
+        logger.error(f"Failed to start Threat Intelligence Scheduler: {e}")
+        logger.warning("Backend will continue without scheduler")
 
 
 def stop_threat_intel_scheduler():
@@ -66,7 +68,7 @@ def stop_threat_intel_scheduler():
         logger.info("Threat Intelligence Scheduler stopped")
 
 
-async def generate_daily_statistics():
+def generate_daily_statistics():
     """Generate daily statistics for threat intelligence"""
     from app.database import get_db
     from sqlalchemy import text
