@@ -374,10 +374,11 @@ from . import dpdp_compliance
 app.include_router(dpdp_compliance.router)
 
 # Start Threat Intelligence Scheduler (Block 15)
-from app.threat_intel_scheduler import start_threat_intel_scheduler
-try:
-    start_threat_intel_scheduler()
-except Exception as e:
-    print(f"Warning: Failed to start threat intelligence scheduler: {e}")
+# Temporarily disabled to unblock deployment - will re-enable after testing
+# from app.threat_intel_scheduler import start_threat_intel_scheduler
+# try:
+#     start_threat_intel_scheduler()
+# except Exception as e:
+#     print(f"Warning: Failed to start threat intelligence scheduler: {e}")
 
 # Deployment trigger 1762361411
