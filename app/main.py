@@ -36,7 +36,7 @@ def pg_dsn_for_psycopg(raw: str) -> str:
 
 def make_app():
     s = get_settings()
-    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, apply_block14_15_migrations, ai_chat, ai_learning
+    from app.admin import threat_intel, analytics, data_core, ai_command_center, ai_analysis_trigger, ai_execution_trigger, apply_block8_migrations, apply_block14_15_migrations, ai_chat, ai_learning, ai_investigation_api
     
     app = FastAPI(title="EchoFort API", version="1.0.0")
 
@@ -51,6 +51,7 @@ def make_app():
     app.include_router(apply_block14_15_migrations.router)
     app.include_router(ai_chat.router)
     app.include_router(ai_learning.router)
+    app.include_router(ai_investigation_api.router)
     # Block 15 (Threat Intelligence) temporarily disabled - will re-enable in v2
     # app.include_router(threat_intelligence.router)
     
@@ -101,7 +102,7 @@ def make_app():
         def _apply():
             base = Path(__file__).resolve().parents[1]
             mdir = base / "migrations"
-            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "040_user_activity_log_simple.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "042_recreate_invoices_table.sql", "034_add_user_kyc_fields.sql", "035_razorpay_tables.sql", "037_gps_and_family_safety.sql", "038_dpdp_compliance.sql", "039_user_activity_log_fix.sql", "043_create_evidence_vault.sql", "044_complaint_drafts.sql", "045_add_extremism_fields.sql", "046_user_consent_log.sql", "047_ai_action_queue.sql", "048_ai_pattern_library.sql", "049_ai_investigation_tasks.sql", "050_ai_learning_center.sql"]:
+            for fname in ["001_init.sql", "002_rbac.sql", "003_social_time.sql", "004_new_features.sql", "014_employees_table.sql", "009-complete-reset.sql", "010_missing_tables.sql", "011_ai_pending_tasks.sql", "012_payment_gateway_management.sql", "013_auto_alerts_enhanced.sql", "015_vault_and_exemptions.sql", "015_youtube_and_scam_alerts.sql", "021_ai_pending_actions.sql", "add_totp_columns.sql", "add_razorpay_config.sql", "add_whatsapp_chat_settings.sql", "022_mobile_caller_id.sql", "040_user_activity_log_simple.sql", "024_mobile_url_checker.sql", "025_mobile_push_notifications.sql", "027_emergency_contacts.sql", "028_realtime_call_analysis.sql", "029_device_permissions.sql", "030_employee_management_enhanced.sql", "031_vault_management_enhanced.sql", "032_mobile_users_schema.sql", "042_recreate_invoices_table.sql", "034_add_user_kyc_fields.sql", "035_razorpay_tables.sql", "037_gps_and_family_safety.sql", "038_dpdp_compliance.sql", "039_user_activity_log_fix.sql", "043_create_evidence_vault.sql", "044_complaint_drafts.sql", "045_add_extremism_fields.sql", "046_user_consent_log.sql", "047_ai_action_queue.sql", "048_ai_pattern_library.sql", "049_ai_investigation_tasks.sql", "050_ai_learning_center.sql", "052_ai_investigation.sql"]:
                 sql = (mdir / fname).read_text(encoding="utf-8")
                 with engine.begin() as conn:
                     conn.exec_driver_sql(sql)
