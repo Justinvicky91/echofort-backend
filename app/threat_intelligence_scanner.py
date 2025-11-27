@@ -80,7 +80,7 @@ class ThreatIntelligenceScanner:
             cur.execute("""
                 SELECT id, source_name, source_type, source_url, source_config
                 FROM threat_intel_sources
-                WHERE is_active = true
+                WHERE is_enabled = true
                 ORDER BY id
             """)
             sources = cur.fetchall()
