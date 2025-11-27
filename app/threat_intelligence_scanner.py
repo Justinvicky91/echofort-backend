@@ -78,10 +78,10 @@ class ThreatIntelligenceScanner:
             
             # Get active sources
             cur.execute("""
-                SELECT id, name, source_type, url, keywords
+                SELECT id, source_name, source_type, source_url, source_config
                 FROM threat_intel_sources
                 WHERE is_active = true
-                ORDER BY priority DESC
+                ORDER BY id
             """)
             sources = cur.fetchall()
             
@@ -94,9 +94,9 @@ class ThreatIntelligenceScanner:
                 try:
                     items = self._scan_source(source, scan_id, conn)
                     total_items += len(items)
-                    logger.info(f"Scanned {source['name']}: {len(items)} items")
+                    logger.info(f"Scanned {source['source_name']}: {len(items)} items")
                 except Exception as e:
-                    logger.error(f"Error scanning {source['name']}: {str(e)}")
+                    logger.error(f"Error scanning {source['source_name']}: {str(e)}")
             
             # Detect patterns
             patterns = self._detect_patterns(scan_id, conn)
@@ -143,7 +143,7 @@ class ThreatIntelligenceScanner:
         
         try:
             # Fetch content
-            response = self.session.get(source['url'], timeout=30)
+            response = self.session.get(source['source_url'], timeout=30)
             response.raise_for_status()
             
             # Parse content
@@ -164,7 +164,7 @@ class ThreatIntelligenceScanner:
             scam_type = self._classify_scam_type(text_content)
             
             # Extract keywords
-            keywords = self._extract_keywords(text_content, source.get('keywords', []))
+            keywords = self._extract_keywords(text_content, source.get('source_config', {}).get('keywords', []))
             
             # Calculate severity (1-10)
             severity = self._calculate_severity(scam_type, len(phones), len(urls))
@@ -193,7 +193,7 @@ class ThreatIntelligenceScanner:
             items.append({"id": item_id, "scam_type": scam_type, "severity": severity})
             
         except Exception as e:
-            logger.error(f"Error scanning source {source['name']}: {str(e)}")
+            logger.error(f"Error scanning source {source['source_name']}: {str(e)}")
         
         return items
     
