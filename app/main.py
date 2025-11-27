@@ -374,7 +374,7 @@ from . import dpdp_compliance
 app.include_router(dpdp_compliance.router)
 
 # Start Threat Intelligence Scheduler (Block 15)
-from .threat_intel_scheduler import start_threat_intel_scheduler
+from app.threat_intel_scheduler import start_threat_intel_scheduler
 try:
     start_threat_intel_scheduler()
 except Exception as e:
