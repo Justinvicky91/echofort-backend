@@ -67,8 +67,8 @@ class ThreatIntelligenceScanner:
             
             # Create new scan record
             cur.execute("""
-                INSERT INTO threat_intelligence_scans (status, started_at)
-                VALUES ('in_progress', CURRENT_TIMESTAMP)
+                INSERT INTO threat_intelligence_scans (scan_status, scan_timestamp, scan_source)
+                VALUES ('running', CURRENT_TIMESTAMP, 'internal')
                 RETURNING id
             """)
             scan_id = cur.fetchone()['id']
@@ -109,13 +109,12 @@ class ThreatIntelligenceScanner:
             # Update scan record
             cur.execute("""
                 UPDATE threat_intelligence_scans
-                SET status = 'completed',
+                SET scan_status = 'completed',
                     completed_at = CURRENT_TIMESTAMP,
-                    items_found = %s,
-                    patterns_detected = %s,
-                    alerts_generated = %s
+                    items_collected = %s,
+                    new_patterns_detected = %s
                 WHERE id = %s
-            """, (total_items, total_patterns, total_alerts, scan_id))
+            """, (total_items, total_patterns, scan_id))
             conn.commit()
             
             cur.close()
@@ -126,7 +125,7 @@ class ThreatIntelligenceScanner:
             return {
                 "scan_id": scan_id,
                 "status": "completed",
-                "items_found": total_items,
+                "items_collected": total_items,
                 "patterns_detected": total_patterns,
                 "alerts_generated": total_alerts
             }

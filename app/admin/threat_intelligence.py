@@ -40,16 +40,16 @@ async def list_scans(
         cur = conn.cursor(cursor_factory=RealDictCursor)
         
         query = """
-            SELECT id, status, started_at, completed_at, 
-                   items_found, patterns_detected, alerts_generated
+            SELECT id, scan_status, scan_timestamp, completed_at, 
+                   items_collected, new_patterns_detected
             FROM threat_intelligence_scans
         """
         
         if status:
-            query += " WHERE status = %s"
-            cur.execute(query + " ORDER BY started_at DESC LIMIT %s", (status, limit))
+            query += " WHERE scan_status = %s"
+            cur.execute(query + " ORDER BY scan_timestamp DESC LIMIT %s", (status, limit))
         else:
-            cur.execute(query + " ORDER BY started_at DESC LIMIT %s", (limit,))
+            cur.execute(query + " ORDER BY scan_timestamp DESC LIMIT %s", (limit,))
         
         scans = cur.fetchall()
         
@@ -86,7 +86,7 @@ async def list_threat_items(
     Query Parameters:
     - limit: Maximum number of items to return (default: 50, max: 200)
     - scam_type: Filter by scam type
-    - min_severity: Filter by minimum severity (1-10)
+    - min_severity: Filter by minimum severity_score (1-10)
     """
     try:
         conn = get_db_connection()
@@ -100,17 +100,17 @@ async def list_threat_items(
             params.append(scam_type)
         
         if min_severity:
-            conditions.append("severity >= %s")
+            conditions.append("severity_score >= %s")
             params.append(min_severity)
         
         where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
         query = f"""
-            SELECT id, scan_id, source_id, scam_type, severity, 
-                   confidence_score, phone_numbers, urls, keywords, collected_at
+            SELECT id, scan_id, source_id, scam_type, severity_score, 
+                   confidence_score, phone_numbers, urls, keywords, created_at
             FROM threat_intelligence_items
             {where_clause}
-            ORDER BY collected_at DESC
+            ORDER BY created_at DESC
             LIMIT %s
         """
         
@@ -228,7 +228,7 @@ async def list_alerts(
     Query Parameters:
     - limit: Maximum number of alerts to return (default: 50, max: 200)
     - status: Filter by status (new, acknowledged, resolved)
-    - min_severity: Filter by minimum severity (1-10)
+    - min_severity: Filter by minimum severity_score (1-10)
     """
     try:
         conn = get_db_connection()
@@ -242,13 +242,13 @@ async def list_alerts(
             params.append(status)
         
         if min_severity:
-            conditions.append("severity >= %s")
+            conditions.append("severity_score >= %s")
             params.append(min_severity)
         
         where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
         
         query = f"""
-            SELECT id, alert_type, severity, title, description, 
+            SELECT id, alert_type, severity_score, title, description, 
                    related_item_ids, status, created_at, acknowledged_at, resolved_at
             FROM threat_alerts
             {where_clause}
@@ -404,7 +404,7 @@ async def get_statistics():
         # Get latest statistics
         cur.execute("""
             SELECT total_scans, total_items, total_patterns, total_alerts,
-                   avg_severity, most_common_scam_type, stats_date
+                   avg_severity_score, most_common_scam_type, stats_date
             FROM threat_intel_statistics
             ORDER BY stats_date DESC
             LIMIT 1
@@ -415,9 +415,9 @@ async def get_statistics():
         # Get real-time counts
         cur.execute("""
             SELECT 
-                COUNT(*) FILTER (WHERE status = 'in_progress') as active_scans,
-                COUNT(*) FILTER (WHERE status = 'completed') as completed_scans,
-                COUNT(*) FILTER (WHERE status = 'failed') as failed_scans
+                COUNT(*) FILTER (WHERE scan_status = 'in_progress') as active_scans,
+                COUNT(*) FILTER (WHERE scan_status = 'completed') as completed_scans,
+                COUNT(*) FILTER (WHERE scan_status = 'failed') as failed_scans
             FROM threat_intelligence_scans
         """)
         
@@ -434,7 +434,7 @@ async def get_statistics():
         cur.execute("""
             SELECT COUNT(*) as new_alerts
             FROM threat_alerts
-            WHERE status = 'new'
+            WHERE scan_status = 'new'
         """)
         
         alert_stats = cur.fetchone()
@@ -467,19 +467,19 @@ async def get_dashboard():
         
         # Recent scans
         cur.execute("""
-            SELECT id, status, started_at, completed_at, items_found
+            SELECT id, scan_status, scan_timestamp, completed_at, items_collected
             FROM threat_intelligence_scans
-            ORDER BY started_at DESC
+            ORDER BY scan_timestamp DESC
             LIMIT 5
         """)
         recent_scans = cur.fetchall()
         
-        # High severity items
+        # High severity_score items
         cur.execute("""
-            SELECT id, scam_type, severity, collected_at
+            SELECT id, scam_type, severity_score, created_at
             FROM threat_intelligence_items
-            WHERE severity >= 8
-            ORDER BY collected_at DESC
+            WHERE severity_score >= 8
+            ORDER BY created_at DESC
             LIMIT 10
         """)
         high_severity_items = cur.fetchall()
@@ -496,9 +496,9 @@ async def get_dashboard():
         
         # New alerts
         cur.execute("""
-            SELECT id, alert_type, severity, title, created_at
+            SELECT id, alert_type, severity_score, title, created_at
             FROM threat_alerts
-            WHERE status = 'new'
+            WHERE scan_status = 'new'
             ORDER BY created_at DESC
             LIMIT 10
         """)
