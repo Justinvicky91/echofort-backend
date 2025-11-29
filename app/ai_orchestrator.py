@@ -12,6 +12,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.ai_learning_center import store_conversation_message, track_ai_decision
 from app.admin.ai_internet_tools import web_search, web_fetch, get_recent_web_logs
+from app.admin.ai_config_tools import get_config, get_feature_flags, propose_config_change, propose_feature_flag_change
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -354,6 +355,61 @@ AVAILABLE_TOOLS = {
                 "url": {"type": "string", "description": "URL to fetch (must be https://)"}
             },
             "required": ["url"]
+        }
+    },
+    "get_config": {
+        "function": get_config,
+        "description": "Get platform configuration entries for a given scope (web, backend, mobile). Returns list of config key-value pairs.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scope": {"type": "string", "description": "Config scope: web, backend, or mobile", "enum": ["web", "backend", "mobile"]},
+                "key_prefix": {"type": "string", "description": "Optional prefix to filter config keys"}
+            },
+            "required": ["scope"]
+        }
+    },
+    "get_feature_flags": {
+        "function": get_feature_flags,
+        "description": "Get feature flags for a given scope (web, backend, mobile). Returns list of flags with enabled/disabled state.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scope": {"type": "string", "description": "Feature flag scope: web, backend, or mobile", "enum": ["web", "backend", "mobile"]},
+                "flag_name_prefix": {"type": "string", "description": "Optional prefix to filter flag names"}
+            },
+            "required": ["scope"]
+        }
+    },
+    "propose_config_change": {
+        "function": propose_config_change,
+        "description": "Propose a configuration change (requires approval). Use this to update website text, backend thresholds, or mobile settings.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "scope": {"type": "string", "description": "Config scope: web, backend, or mobile"},
+                "key": {"type": "string", "description": "Config key to update"},
+                "new_value": {"type": "object", "description": "New value as JSON object"},
+                "reason": {"type": "string", "description": "Reason for the change"},
+                "created_by_user_id": {"type": "integer", "description": "User ID proposing the change"}
+            },
+            "required": ["scope", "key", "new_value", "reason", "created_by_user_id"]
+        }
+    },
+    "propose_feature_flag_change": {
+        "function": propose_feature_flag_change,
+        "description": "Propose a feature flag change (requires approval). Use this to enable/disable features on website, backend, or mobile.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "flag_name": {"type": "string", "description": "Feature flag name"},
+                "new_state": {"type": "boolean", "description": "True to enable, False to disable"},
+                "scope": {"type": "string", "description": "Feature flag scope: web, backend, or mobile"},
+                "reason": {"type": "string", "description": "Reason for the change"},
+                "created_by_user_id": {"type": "integer", "description": "User ID proposing the change"},
+                "rollout_percent": {"type": "integer", "description": "Optional rollout percentage (0-100)"}
+            },
+            "required": ["flag_name", "new_state", "scope", "reason", "created_by_user_id"]
         }
     }
 }
