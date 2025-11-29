@@ -15,6 +15,7 @@ from app.admin.ai_internet_tools import web_search, web_fetch, get_recent_web_lo
 from app.admin.ai_config_tools import get_config, get_feature_flags, propose_config_change, propose_feature_flag_change
 from app.admin.ai_github_tools import github_list_repos, github_get_file, propose_code_change
 from app.admin.ai_mobile_tools import propose_mobile_release
+from app.admin.ai_tool_status import get_tool_error_message
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -578,11 +579,30 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
                     except Exception as tool_error:
                         # Log the full error for debugging
                         print(f"ERROR in tool {tool_name}: {str(tool_error)}")
-                        # Return safe error message
+                        
+                        # Get specific error message for this tool
+                        # Map tool_name to tool status name
+                        tool_status_map = {
+                            "internet_search": "web_search",
+                            "internet_fetch": "web_fetch",
+                            "propose_code_change": "code_change",
+                            "propose_mobile_release": "mobile_release",
+                            "propose_config_change": "config_update",
+                            "propose_feature_flag_change": "feature_flag"
+                        }
+                        
+                        status_tool_name = tool_status_map.get(tool_name, tool_name)
+                        
+                        try:
+                            specific_error = get_tool_error_message(status_tool_name)
+                        except:
+                            specific_error = f"I encountered an error while trying to {tool_name.replace('_', ' ')}: {str(tool_error)}"
+                        
+                        # Return specific error message
                         result = {
                             "error": True,
                             "error_type": "tool_execution_error",
-                            "safe_message": f"I encountered an internal error while trying to {tool_name.replace('_', ' ')}. The technical team has been notified."
+                            "safe_message": specific_error
                         }
                     
                     # Track actions created
