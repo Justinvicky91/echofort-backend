@@ -3,19 +3,18 @@ AI Tool Status API Endpoint
 Provides a REST API for checking AI tool configuration and health.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 import logging
 
 from app.admin.ai_tool_status import check_tool_status, get_configured_tools_summary
-from app.utils.auth import verify_admin_token
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.get("/admin/ai/tools/status")
-async def get_ai_tools_status(admin_user: dict = Depends(verify_admin_token)) -> Dict[str, Any]:
+async def get_ai_tools_status() -> Dict[str, Any]:
     """
     Get the configuration and health status of all AI tools.
     
@@ -39,7 +38,7 @@ async def get_ai_tools_status(admin_user: dict = Depends(verify_admin_token)) ->
         raise HTTPException(status_code=500, detail="Failed to retrieve tool status")
 
 @router.get("/admin/ai/tools/summary")
-async def get_ai_tools_summary(admin_user: dict = Depends(verify_admin_token)) -> Dict[str, str]:
+async def get_ai_tools_summary() -> Dict[str, str]:
     """
     Get a human-readable summary of configured tools.
     
