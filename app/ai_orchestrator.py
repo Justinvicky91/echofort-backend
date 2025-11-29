@@ -112,7 +112,7 @@ def get_recent_scam_patterns(limit: int = 10, region: Optional[str] = None) -> L
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             query = """
-                SELECT id, category, name, risk_level, example_phrases, source_url, created_at
+                SELECT id, category, description, risk_level, example_phrases, source_url, created_at
                 FROM ai_pattern_library
                 WHERE is_active = true
             """
@@ -415,7 +415,7 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
                 tool_name = tool_call.function.name
                 tool_args = json.loads(tool_call.function.arguments)
                 
-                # Execute tool
+                # Execute tool with error handling
                 if tool_name in AVAILABLE_TOOLS:
                     tool_func = AVAILABLE_TOOLS[tool_name]["function"]
                     
@@ -423,7 +423,17 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
                     if tool_name == "create_ai_action_proposal":
                         tool_args["created_by_user_id"] = user_id
                     
-                    result = tool_func(**tool_args)
+                    try:
+                        result = tool_func(**tool_args)
+                    except Exception as tool_error:
+                        # Log the full error for debugging
+                        print(f"ERROR in tool {tool_name}: {str(tool_error)}")
+                        # Return safe error message
+                        result = {
+                            "error": True,
+                            "error_type": "tool_execution_error",
+                            "safe_message": f"I encountered an internal error while trying to {tool_name.replace('_', ' ')}. The technical team has been notified."
+                        }
                     
                     # Track actions created
                     if tool_name == "create_ai_action_proposal" and "id" in result:
