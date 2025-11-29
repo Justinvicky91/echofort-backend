@@ -13,6 +13,7 @@ from psycopg2.extras import RealDictCursor
 from app.ai_learning_center import store_conversation_message, track_ai_decision
 from app.admin.ai_internet_tools import web_search, web_fetch, get_recent_web_logs
 from app.admin.ai_config_tools import get_config, get_feature_flags, propose_config_change, propose_feature_flag_change
+from app.admin.ai_github_tools import github_list_repos, github_get_file, propose_code_change
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -410,6 +411,49 @@ AVAILABLE_TOOLS = {
                 "rollout_percent": {"type": "integer", "description": "Optional rollout percentage (0-100)"}
             },
             "required": ["flag_name", "new_state", "scope", "reason", "created_by_user_id"]
+        }
+    },
+    "github_list_repos": {
+        "function": github_list_repos,
+        "description": "List available GitHub repositories (backend, frontend, mobile).",
+        "parameters": {"type": "object", "properties": {}}
+    },
+    "github_get_file": {
+        "function": github_get_file,
+        "description": "Get file content from a GitHub repository. Use this to read code before proposing changes.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "repo": {"type": "string", "description": "Repository name (echofort-backend, echofort-frontend-prod, echofort-mobile)"},
+                "path": {"type": "string", "description": "File path in repository"},
+                "branch": {"type": "string", "description": "Branch name (default: main)", "default": "main"}
+            },
+            "required": ["repo", "path"]
+        }
+    },
+    "propose_code_change": {
+        "function": propose_code_change,
+        "description": "Propose a code change via GitHub PR (requires approval). Use this to fix bugs, add features, or update UI.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "target": {"type": "string", "description": "Target system: backend, frontend, or mobile", "enum": ["backend", "frontend", "mobile"]},
+                "description": {"type": "string", "description": "Description of the code change"},
+                "files_to_change": {
+                    "type": "array",
+                    "description": "List of files to change with their new content",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "path": {"type": "string", "description": "File path"},
+                            "content": {"type": "string", "description": "New file content"}
+                        },
+                        "required": ["path", "content"]
+                    }
+                },
+                "created_by_user_id": {"type": "integer", "description": "User ID proposing the change"}
+            },
+            "required": ["target", "description", "files_to_change", "created_by_user_id"]
         }
     }
 }
