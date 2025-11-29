@@ -11,6 +11,7 @@ from openai import OpenAI
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from app.ai_learning_center import store_conversation_message, track_ai_decision
+from app.admin.ai_internet_tools import web_search, web_fetch, get_recent_web_logs
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -327,6 +328,33 @@ AVAILABLE_TOOLS = {
             },
             "required": ["action_type", "payload", "created_by_user_id"]
         }
+    },
+    "internet_search": {
+        "function": lambda query, category=None, user_id=1: [r.to_dict() for r in web_search(query, category, user_id)],
+        "description": "Search the internet for information about scams, threats, competitors, or general topics. Returns list of search results with titles, summaries, and URLs.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"},
+                "category": {
+                    "type": "string",
+                    "description": "Optional category: scam_fraud, harassment, child_safety, extremism, marketing_competitor, generic",
+                    "enum": ["scam_fraud", "harassment", "child_safety", "extremism", "marketing_competitor", "generic"]
+                }
+            },
+            "required": ["query"]
+        }
+    },
+    "internet_fetch": {
+        "function": lambda url, user_id=1: web_fetch(url, user_id).to_dict() if web_fetch(url, user_id) else {"error": "Failed to fetch URL"},
+        "description": "Fetch and extract text content from a specific URL (HTTPS only). Returns page title and text snippet.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "URL to fetch (must be https://)"}
+            },
+            "required": ["url"]
+        }
     }
 }
 
@@ -364,7 +392,8 @@ def process_chat_message(
 
 You help the Founder/Super Admin manage the platform by:
 1. Answering questions about users, payments, complaints, employees, scams, and system health
-2. Proposing actions that need approval (you NEVER execute actions directly)
+2. Researching scam trends, threats, and competitor activity using internet access
+3. Proposing actions that need approval (you NEVER execute actions directly)
 
 Current context:
 - Role: {role}
@@ -372,11 +401,17 @@ Current context:
 - User ID: {user_id}
 
 CRITICAL SAFETY RULES:
-- You can READ data using tools like get_user_profile, get_plan_metrics, etc.
+- You can READ data using tools like get_user_profile, get_plan_metrics, internet_search, internet_fetch
 - For any CHANGES (create, update, delete), you MUST use create_ai_action_proposal
 - NEVER execute commands directly
 - Always explain what you're doing and why
 - If you create an action proposal, tell the user it needs approval in the Action Queue
+
+INTERNET RESEARCH GUIDELINES:
+- For questions about "latest scam trends", "recent cybercrime", "competitor news", use internet_search first
+- Use category filters: scam_fraud, harassment, child_safety, extremism, marketing_competitor
+- When presenting internet results, cite sources with titles and URLs
+- If internet tools fail, gracefully explain the limitation
 
 Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
 """
