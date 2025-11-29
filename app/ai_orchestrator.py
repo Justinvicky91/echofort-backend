@@ -14,6 +14,7 @@ from app.ai_learning_center import store_conversation_message, track_ai_decision
 from app.admin.ai_internet_tools import web_search, web_fetch, get_recent_web_logs
 from app.admin.ai_config_tools import get_config, get_feature_flags, propose_config_change, propose_feature_flag_change
 from app.admin.ai_github_tools import github_list_repos, github_get_file, propose_code_change
+from app.admin.ai_mobile_tools import propose_mobile_release
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -454,6 +455,20 @@ AVAILABLE_TOOLS = {
                 "created_by_user_id": {"type": "integer", "description": "User ID proposing the change"}
             },
             "required": ["target", "description", "files_to_change", "created_by_user_id"]
+        }
+    },
+    "propose_mobile_release": {
+        "function": propose_mobile_release,
+        "description": "Propose a mobile app release build (requires approval). Use this to trigger a new version build for Play Store.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "version_hint": {"type": "string", "description": "Version number (e.g., 1.0.13)"},
+                "notes": {"type": "string", "description": "Release notes describing changes"},
+                "created_by_user_id": {"type": "integer", "description": "User ID proposing the release"},
+                "build_type": {"type": "string", "description": "Build type: release or beta", "enum": ["release", "beta"], "default": "release"}
+            },
+            "required": ["version_hint", "notes", "created_by_user_id"]
         }
     }
 }
