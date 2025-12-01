@@ -17,6 +17,7 @@ from app.admin.ai_github_tools import github_list_repos, github_get_file, propos
 from app.admin.ai_mobile_tools import propose_mobile_release
 from app.admin.ai_tool_status import get_tool_error_message
 from app.admin.echoshell_read_tools import ECHOSHELL_READ_TOOLS
+from app.admin.echoshell_write_tools import ECHOSHELL_WRITE_TOOLS
 
 # Initialize OpenAI client
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -469,6 +470,16 @@ AVAILABLE_TOOLS = {
             "required": [k for k, v in tool_info["parameters"].items() if v.get("required", False)]
         }
     } for tool_name, tool_info in ECHOSHELL_READ_TOOLS.items()},
+    # EchoShell WRITE Tools (Require Approval via AI Pending Actions)
+    **{tool_name: {
+        "function": tool_info["function"],
+        "description": tool_info["description"],
+        "parameters": {
+            "type": "object",
+            "properties": tool_info["parameters"],
+            "required": [k for k, v in tool_info["parameters"].items() if not v.get("default")]
+        }
+    } for tool_name, tool_info in ECHOSHELL_WRITE_TOOLS.items()},
     "propose_mobile_release": {
         "function": propose_mobile_release,
         "description": "Propose a mobile app release build (requires approval). Use this to trigger a new version build for Play Store.",
