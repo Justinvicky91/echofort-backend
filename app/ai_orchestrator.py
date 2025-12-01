@@ -561,10 +561,13 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
         )
         
         print(f"[AI ORCHESTRATOR] OpenAI response received successfully")
+        print(f"[AI ORCHESTRATOR] Tool calls: {len(response.choices[0].message.tool_calls or [])}")
+        print(f"[AI ORCHESTRATOR] Content: {response.choices[0].message.content}")
         
         assistant_message = response.choices[0].message
         actions_created = []
         source_refs = []
+        tool_messages = []
         
         # Handle tool calls
         if assistant_message.tool_calls:
@@ -625,8 +628,36 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
                         "value": tool_name,
                         "result_summary": str(result)[:200]  # Truncate for brevity
                     })
+                    
+                    # Add tool result to messages for second API call
+                    tool_messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": json.dumps(result)
+                    })
         
-        response_text = assistant_message.content or "I've processed your request using internal tools."
+        # If tools were called, make a second API call to get natural language response
+        if tool_messages:
+            print(f"[AI ORCHESTRATOR] Sending tool results back to OpenAI for natural language response")
+            
+            # Build conversation with tool results
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message},
+                assistant_message.model_dump(),  # Include the assistant's tool call message
+            ] + tool_messages
+            
+            # Get final response from OpenAI
+            final_response = client.chat.completions.create(
+                model="gpt-4-1106-preview",
+                messages=messages
+            )
+            
+            response_text = final_response.choices[0].message.content
+            print(f"[AI ORCHESTRATOR] Natural language response generated: {response_text[:100]}...")
+        else:
+            # No tools were called, use the original response
+            response_text = assistant_message.content or "I've processed your request using internal tools."
         
         # Store assistant response in Learning Center
         try:
