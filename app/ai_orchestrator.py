@@ -630,10 +630,17 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
                     })
                     
                     # Add tool result to messages for second API call
+                    # Use custom JSON encoder to handle datetime objects
+                    def json_serial(obj):
+                        """JSON serializer for objects not serializable by default json code"""
+                        if isinstance(obj, datetime):
+                            return obj.isoformat()
+                        raise TypeError(f"Type {type(obj)} not serializable")
+                    
                     tool_messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.id,
-                        "content": json.dumps(result)
+                        "content": json.dumps(result, default=json_serial)
                     })
         
         # If tools were called, make a second API call to get natural language response
