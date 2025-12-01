@@ -546,6 +546,10 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
     
     # Call OpenAI with tools
     try:
+        print(f"[AI ORCHESTRATOR] Processing message: {message[:100]}...")
+        print(f"[AI ORCHESTRATOR] OpenAI API Key configured: {bool(os.getenv('OPENAI_API_KEY'))}")
+        print(f"[AI ORCHESTRATOR] Available tools: {len(AVAILABLE_TOOLS)}")
+        
         response = client.chat.completions.create(
             model="gpt-4-1106-preview",  # or gpt-4, gpt-3.5-turbo
             messages=[
@@ -555,6 +559,8 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
             tools=tools_for_openai,
             tool_choice="auto"
         )
+        
+        print(f"[AI ORCHESTRATOR] OpenAI response received successfully")
         
         assistant_message = response.choices[0].message
         actions_created = []
@@ -659,6 +665,10 @@ Available tools: {', '.join(AVAILABLE_TOOLS.keys())}
         }
         
     except Exception as e:
+        print(f"[AI ORCHESTRATOR] CRITICAL ERROR: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"[AI ORCHESTRATOR] Traceback: {traceback.format_exc()}")
+        
         return {
             "assistant_message": f"I encountered an error: {str(e)}",
             "actions_created": [],
