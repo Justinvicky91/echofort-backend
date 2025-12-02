@@ -51,6 +51,7 @@ PRICING_PLANS = {
 }
 
 TRIAL_AMOUNT = 100  # ₹1 in paise
+RAZORPAY_MODE = os.getenv("RAZORPAY_MODE", "test")  # test or live
 
 
 class CreateOrderRequest(BaseModel):
@@ -419,3 +420,46 @@ async def get_razorpay_plans():
         "note": "Prices in Indian Rupees (₹)",
         "trial_period": "₹1 for 24 hours, then full price"
     }
+
+
+@router.post("/test-live")
+async def test_razorpay_live_connection():
+    """
+    Test Razorpay LIVE connection by creating a ₹1 test order
+    BLOCK PAY-RAZOR-LIVE Section 2B
+    """
+    if not razorpay_client:
+        return {
+            "ok": False,
+            "error_code": "missing_keys",
+            "error_message": "Razorpay credentials not configured in environment variables"
+        }
+    
+    try:
+        # Create a ₹1 test order to verify LIVE connection
+        test_order = razorpay_client.order.create({
+            "amount": 100,  # ₹1 in paise
+            "currency": "INR",
+            "receipt": f"test_live_{int(datetime.utcnow().timestamp())}",
+            "notes": {
+                "purpose": "LIVE connection test",
+                "mode": RAZORPAY_MODE
+            }
+        })
+        
+        # If order creation succeeded, connection is working
+        return {
+            "ok": True,
+            "mode": RAZORPAY_MODE,
+            "test_order_id": test_order["id"],
+            "message": f"Razorpay {RAZORPAY_MODE.upper()} connection successful"
+        }
+        
+    except Exception as e:
+        error_message = str(e)
+        return {
+            "ok": False,
+            "error_code": "RAZORPAY_API_ERROR",
+            "error_message": error_message,
+            "mode": RAZORPAY_MODE
+        }
