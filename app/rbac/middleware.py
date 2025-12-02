@@ -5,7 +5,7 @@ Block 24 - Part A
 Provides decorators and middleware to enforce role-based access control on backend routes.
 """
 
-from fastapi import HTTPException, Request, Depends
+from fastapi import HTTPException, Request, Depends, Header
 from functools import wraps
 from typing import List, Callable, Optional
 from .permissions import has_permission, is_admin_role, Permission
