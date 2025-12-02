@@ -202,6 +202,11 @@ async def verify_totp_login(payload: dict, request: Request):
         
         print(f"✅ TOTP 2FA login successful for: {emp_username}")
         
+        # Get permissions and sidebar items for super_admin
+        from ..rbac import get_permissions_for_role, get_sidebar_items_for_role
+        permissions = get_permissions_for_role("super_admin")
+        sidebar_items = get_sidebar_items_for_role("super_admin")
+        
         return {
             "token": jwt_token,
             "user": {
@@ -209,8 +214,12 @@ async def verify_totp_login(payload: dict, request: Request):
                 "employee_id": emp_id,
                 "username": emp_username,
                 "role": "super_admin",
-                "user_type": "super_admin"
+                "user_type": "super_admin",
+                "is_super_admin": True,
+                "department": "Executive"
             },
+            "permissions": permissions,
+            "sidebar_items": sidebar_items,
             "redirect": "/super-admin"
         }
         
