@@ -12,7 +12,55 @@ from .permissions import has_permission, is_admin_role, Permission
 from ..utils import jwt_decode
 
 
-# FastAPI Dependencies for route protection
+# FastAPI Dependencies for route protection (Legacy + New)
+
+# Legacy guard functions (from old rbac.py) - use X-Employee-Id and X-Role headers
+async def require_role(role: str, employee_id: int | None, employee_role: str | None):
+    """
+    Legacy role checking function.
+    """
+    from ..utils import is_admin
+    if employee_role == role or (role != "ADMIN" and employee_role == "ADMIN"):
+        return True
+    raise HTTPException(403, "Insufficient role")
+
+
+async def guard_support(x_employee_id: int = Header(..., alias="X-Employee-Id"),
+                        x_role: str = Header(..., alias="X-Role")):
+    """
+    Legacy guard function for SUPPORT role.
+    """
+    return await require_role("SUPPORT", x_employee_id, x_role)
+
+
+async def guard_marketing(x_employee_id: int = Header(..., alias="X-Employee-Id"),
+                          x_role: str = Header(..., alias="X-Role")):
+    """
+    Legacy guard function for MARKETING role.
+    """
+    return await require_role("MARKETING", x_employee_id, x_role)
+
+
+async def guard_accounting(x_employee_id: int = Header(..., alias="X-Employee-Id"),
+                           x_role: str = Header(..., alias="X-Role")):
+    """
+    Legacy guard function for ACCOUNTING role.
+    """
+    return await require_role("ACCOUNTING", x_employee_id, x_role)
+
+
+async def guard_admin_legacy(x_employee_id: int = Header(..., alias="X-Employee-Id"),
+                      x_role: str = Header(..., alias="X-Role")):
+    """
+    Legacy guard function for ADMIN role (uses X-Employee-Id and X-Role headers).
+    """
+    from ..utils import is_admin
+    if x_role == "ADMIN" or is_admin(x_employee_id):
+        return True
+    raise HTTPException(403, "Admin only")
+
+
+# New guard function (uses JWT token from Authorization header)
 async def guard_admin(request: Request):
     """
     FastAPI dependency that ensures the current user is an admin or super admin.

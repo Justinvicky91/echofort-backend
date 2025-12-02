@@ -16,7 +16,13 @@ from .permissions import (
     get_sidebar_items_for_role,
 )
 
-from .middleware import guard_admin
+from .middleware import (
+    guard_admin,
+    guard_support,
+    guard_marketing,
+    guard_accounting,
+    guard_admin_legacy,
+)
 
 __all__ = [
     "Role",
@@ -30,4 +36,8 @@ __all__ = [
     "is_admin_role",
     "get_sidebar_items_for_role",
     "guard_admin",
+    "guard_support",
+    "guard_marketing",
+    "guard_accounting",
+    "guard_admin_legacy",
 ]
