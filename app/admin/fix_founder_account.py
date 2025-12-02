@@ -22,10 +22,12 @@ async def fix_founder_account(request: Request):
     db = request.app.state.db
     
     try:
+        from sqlalchemy import text
+        
         # Find the Founder's account by username pattern
         # Looking for @EchofortSuperAdmin91 or similar
-        founder_accounts = await db.fetch_all(
-            """
+        result = await db.execute(
+            text("""
             SELECT id, username, role, is_super_admin, department 
             FROM employees 
             WHERE username ILIKE '%echofort%' 
@@ -33,8 +35,9 @@ async def fix_founder_account(request: Request):
                OR username ILIKE '%founder%'
                OR id = 1
             ORDER BY id
-            """
+            """)
         )
+        founder_accounts = result.fetchall()
         
         if not founder_accounts:
             return {
@@ -47,21 +50,22 @@ async def fix_founder_account(request: Request):
         for account in founder_accounts:
             # Update to super_admin role
             await db.execute(
-                """
+                text("""
                 UPDATE employees 
                 SET role = 'super_admin',
                     is_super_admin = true,
                     department = 'Executive'
-                WHERE id = $1
-                """,
-                account["id"]
+                WHERE id = :id
+                """),
+                {"id": account["id"]}
             )
             
             # Fetch updated account
-            updated = await db.fetch_one(
-                "SELECT id, username, role, is_super_admin, department FROM employees WHERE id = $1",
-                account["id"]
+            updated_result = await db.execute(
+                text("SELECT id, username, role, is_super_admin, department FROM employees WHERE id = :id"),
+                {"id": account["id"]}
             )
+            updated = updated_result.first()
             
             results.append({
                 "id": account["id"],

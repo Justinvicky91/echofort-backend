@@ -34,10 +34,12 @@ async def whoami(request: Request):
         
         # Get user from database
         db = request.app.state.db
-        user_row = await db.fetch_one(
-            "SELECT id, username, role, is_super_admin, department FROM employees WHERE id = $1",
-            int(employee_id)
+        from sqlalchemy import text
+        user_row = await db.execute(
+            text("SELECT id, username, role, is_super_admin, department FROM employees WHERE id = :employee_id"),
+            {"employee_id": int(employee_id)}
         )
+        user_row = user_row.first()
         
         if not user_row:
             raise HTTPException(404, "User not found in database")
