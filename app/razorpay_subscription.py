@@ -529,6 +529,7 @@ async def create_razorpay_order_live(payload: CreateOrderLiveRequest):
             "order_id": order["id"],
             "amount": order["amount"],
             "currency": order["currency"],
+            "key_id": RAZORPAY_KEY_ID,
             "mode": RAZORPAY_MODE
         }
         
