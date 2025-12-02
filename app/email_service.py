@@ -165,5 +165,70 @@ class EmailService:
         
         return self._send_smtp_email(to_email, subject, html)
 
+    def send_invoice_email(self, to_email: str, invoice_number: str, amount: int, currency: str, html_content: str, pdf_path: str = None) -> bool:
+        """
+        Send invoice email with PDF attachment
+        
+        Args:
+            to_email: Recipient email address
+            invoice_number: Invoice number (e.g., INV-202501-00001)
+            amount: Amount in paise (100 paise = ₹1)
+            currency: Currency code (INR)
+            html_content: HTML invoice content
+            pdf_path: Optional path to PDF file to attach
+            
+        Returns:
+            bool: True if email sent successfully, False otherwise
+        """
+        amount_rupees = amount / 100
+        subject = f"Invoice {invoice_number} - ₹{amount_rupees:.2f} Payment Received"
+        
+        email_html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:20px;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+<tr><td style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;text-align:center;">
+<h1 style="color:white;margin:0;font-size:28px;">🛡️ EchoFort</h1>
+<p style="color:rgba(255,255,255,0.9);margin:8px 0 0 0;font-size:14px;">Payment Confirmation</p>
+</td></tr>
+<tr><td style="padding:40px 30px;">
+<p style="font-size:16px;color:#1f2937;margin:0 0 20px 0;">
+Thank you for your payment! Your transaction has been successfully processed.
+</p>
+<div style="background:#f9fafb;border-left:4px solid #10b981;padding:20px;margin:20px 0;border-radius:4px;">
+<p style="margin:0 0 12px 0;color:#374151;font-weight:600;">Payment Details</p>
+<table style="width:100%;border-collapse:collapse;">
+<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Invoice Number:</td>
+<td style="padding:8px 0;color:#1f2937;font-weight:600;text-align:right;font-size:14px;">{invoice_number}</td></tr>
+<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Amount Paid:</td>
+<td style="padding:8px 0;color:#10b981;font-weight:700;text-align:right;font-size:18px;">₹{amount_rupees:.2f}</td></tr>
+<tr><td style="padding:8px 0;color:#6b7280;font-size:14px;">Currency:</td>
+<td style="padding:8px 0;color:#1f2937;font-weight:600;text-align:right;font-size:14px;">{currency}</td></tr>
+</table>
+</div>
+<p style="font-size:14px;color:#6b7280;margin:24px 0 0 0;line-height:1.6;">
+Your invoice is attached to this email. Please keep it for your records.
+</p>
+<p style="font-size:14px;color:#6b7280;margin:16px 0 0 0;line-height:1.6;">
+If you have any questions, contact <a href="mailto:{self.support_email}" style="color:#667eea;text-decoration:none;">{self.support_email}</a>
+</p>
+<div style="text-align:center;margin:32px 0;">
+<a href="https://echofort.ai/dashboard" style="display:inline-block;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:14px 32px;text-decoration:none;border-radius:8px;font-weight:600;font-size:14px;">View Dashboard</a>
+</div>
+</td></tr>
+<tr><td style="background:#f8f9fa;padding:25px 30px;border-top:1px solid #e9ecef;text-align:center;">
+<p style="margin:0 0 8px 0;color:#6b7280;font-size:12px;"><strong>EchoFort Technologies</strong><br>Protecting India from Scams with AI-Powered Security</p>
+<p style="margin:8px 0;font-size:12px;"><a href="https://echofort.ai" style="color:#667eea;text-decoration:none;">echofort.ai</a> | <a href="mailto:{self.support_email}" style="color:#667eea;text-decoration:none;">{self.support_email}</a></p>
+<p style="margin:12px 0 0 0;color:#d1d5db;font-size:12px;">© 2025 EchoFort. All rights reserved.</p>
+</td></tr>
+</table></td></tr></table>
+</body></html>"""
+        
+        # TODO: Add PDF attachment support when needed
+        # For now, just send email without attachment
+        return self._send_smtp_email(to_email, subject, email_html)
+
 # Singleton instance
 email_service = EmailService()

@@ -14,6 +14,8 @@ import hashlib
 import os
 from .utils import get_current_user
 from .deps import get_settings
+from .invoice_generator import generate_invoice_html, convert_html_to_pdf
+from .email_service import email_service
 
 router = APIRouter(prefix="/api/razorpay", tags=["Razorpay Payment"])
 
@@ -545,7 +547,7 @@ async def create_razorpay_order_live(payload: CreateOrderLiveRequest):
 async def razorpay_webhook_live(request: Request):
     """
     Handle Razorpay LIVE webhooks
-    BLOCK PAY-RAZOR-LIVE Section 2D
+    BLOCK PAY-RAZOR-LIVE Section 2D + BLOCK INVOICE-EMAIL Phase 2
     """
     db = request.app.state.db
     
@@ -583,17 +585,108 @@ async def razorpay_webhook_live(request: Request):
             payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
             order_id = payment_entity.get("order_id")
             payment_id = payment_entity.get("id")
+            amount = payment_entity.get("amount", 0)  # in paise
+            currency = payment_entity.get("currency", "INR")
             
-            # Mark test subscription as LIVE_TEST_PAID
+            # Get order details to check if internal test
+            order_result = await db.fetch_one(text("""
+                SELECT user_id, plan, is_trial FROM razorpay_orders WHERE order_id = :order_id
+            """), {"order_id": order_id})
+            
+            # Determine if internal test (₹1 = 100 paise)
+            is_internal_test = (amount == 100)
+            user_id = order_result["user_id"] if order_result else 1  # Default to SuperAdmin
+            
+            # Generate invoice number
+            invoice_number_result = await db.fetch_one(text("SELECT generate_invoice_number() as num"))
+            invoice_number = invoice_number_result["num"]
+            
+            # Generate invoice HTML
+            html_content = generate_invoice_html(
+                invoice_number=invoice_number,
+                order_id=order_id,
+                payment_id=payment_id,
+                amount=amount,
+                currency=currency,
+                is_internal_test=is_internal_test,
+                created_at=datetime.utcnow(),
+                user_email="founder@echofort.ai" if is_internal_test else None,
+                user_name="EchoFort SuperAdmin" if is_internal_test else None
+            )
+            
+            # Save PDF (optional - can be generated on-demand)
+            pdf_dir = "/tmp/invoices"
+            os.makedirs(pdf_dir, exist_ok=True)
+            pdf_path = f"{pdf_dir}/{invoice_number}.pdf"
+            pdf_generated = await convert_html_to_pdf(html_content, pdf_path)
+            
+            # For now, store PDF locally (in production, upload to S3)
+            pdf_url = f"https://api.echofort.ai/invoices/{invoice_number}.pdf" if pdf_generated else None
+            
+            # Insert invoice into database
             await db.execute(text("""
-                INSERT INTO subscriptions 
-                (user_id, plan, status, payment_id, order_id, created_at, mode)
-                VALUES (1, 'live-test', 'LIVE_TEST_PAID', :payment_id, :order_id, NOW(), :mode)
+                INSERT INTO invoices 
+                (user_id, order_id, payment_id, amount, currency, is_internal_test, 
+                 status, invoice_number, html_content, pdf_url, created_at)
+                VALUES (:user_id, :order_id, :payment_id, :amount, :currency, :is_internal_test,
+                        'paid', :invoice_number, :html_content, :pdf_url, NOW())
             """), {
-                "payment_id": payment_id,
+                "user_id": user_id,
                 "order_id": order_id,
-                "mode": RAZORPAY_MODE
+                "payment_id": payment_id,
+                "amount": amount,
+                "currency": currency,
+                "is_internal_test": is_internal_test,
+                "invoice_number": invoice_number,
+                "html_content": html_content,
+                "pdf_url": pdf_url
             })
+            
+            print(f"✅ Invoice generated: {invoice_number} for order {order_id}")
+            
+            # Send invoice email (only for real payments, not internal tests)
+            if not is_internal_test and user_email:
+                try:
+                    email_sent = email_service.send_invoice_email(
+                        to_email=user_email,
+                        invoice_number=invoice_number,
+                        amount=amount,
+                        currency=currency,
+                        html_content=html_content,
+                        pdf_path=pdf_path if pdf_generated else None
+                    )
+                    if email_sent:
+                        print(f"✅ Invoice email sent to {user_email}")
+                    else:
+                        print(f"⚠️ Failed to send invoice email to {user_email}")
+                except Exception as e:
+                    print(f"⚠️ Error sending invoice email: {str(e)}")
+            
+            # Mark subscription (for real payments, not internal tests)
+            if not is_internal_test:
+                plan = order_result["plan"] if order_result else "unknown"
+                await db.execute(text("""
+                    INSERT INTO subscriptions 
+                    (user_id, plan, status, payment_id, order_id, created_at, mode)
+                    VALUES (:user_id, :plan, 'ACTIVE', :payment_id, :order_id, NOW(), :mode)
+                """), {
+                    "user_id": user_id,
+                    "plan": plan,
+                    "payment_id": payment_id,
+                    "order_id": order_id,
+                    "mode": RAZORPAY_MODE
+                })
+            else:
+                # For internal tests, mark as LIVE_TEST_PAID
+                await db.execute(text("""
+                    INSERT INTO subscriptions 
+                    (user_id, plan, status, payment_id, order_id, created_at, mode)
+                    VALUES (1, 'live-test', 'LIVE_TEST_PAID', :payment_id, :order_id, NOW(), :mode)
+                """), {
+                    "payment_id": payment_id,
+                    "order_id": order_id,
+                    "mode": RAZORPAY_MODE
+                })
         
         return {"ok": True, "message": "Webhook processed"}
         

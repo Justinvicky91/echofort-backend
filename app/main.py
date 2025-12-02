@@ -182,6 +182,8 @@ def make_app():
     app.include_router(websockets.router)
     # Note: ai_assistant.router already exists, just replace the file
     app.include_router(invoice_generator.router)
+    from . import invoice_api
+    app.include_router(invoice_api.router)
     app.include_router(refund_processing.router)
     # REMOVED: execute_sql.router (security risk - raw SQL execution)
     # NEW ROUTERS - Critical APIs
