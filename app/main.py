@@ -22,7 +22,7 @@ from .deps import get_settings
 from .auth import otp, device, password, reset_admin_password, debug_employees, mobile_auth
 from .ai import voice, image
 from .billing import razorpay_webhooks, stripe_webhooks, invoice_generator, refund_processing
-from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv, billing_management, user_management, debug_auth, fix_invoices_schema, fix_refunds_schema, fix_users_kyc_schema, fix_mobile_profile_schema, fix_evidence_vault_schema, fix_complaint_drafts_schema, fix_consent_log_schema, fix_extremism_fields_schema
+from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv, billing_management, user_management, debug_auth, fix_invoices_schema, fix_refunds_schema, fix_users_kyc_schema, fix_mobile_profile_schema, fix_evidence_vault_schema, fix_complaint_drafts_schema, fix_consent_log_schema, fix_extremism_fields_schema, whoami, fix_founder_account
 from . import social
 
 
@@ -221,6 +221,8 @@ def make_app():
     from .admin import create_test_employees
     app.include_router(rbac_routes.router)
     app.include_router(create_test_employees.router)
+    app.include_router(whoami.router)
+    app.include_router(fix_founder_account.router)
 
 
 

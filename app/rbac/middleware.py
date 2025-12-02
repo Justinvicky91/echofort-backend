@@ -159,7 +159,13 @@ def require_permission(permission: str):
                     detail="Unauthorized: Authentication required"
                 )
             
-            # Check permission
+            # BLOCK 24D: Hard bypass for super_admin
+            # Super admins have access to ALL permissions, no exceptions
+            if role == "super_admin":
+                # Super admin bypass - always allow
+                return await func(*args, **kwargs)
+            
+            # Check permission for non-super_admin users
             if not has_permission(role, permission):
                 raise HTTPException(
                     status_code=403,
