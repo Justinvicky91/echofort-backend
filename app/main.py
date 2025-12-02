@@ -283,7 +283,7 @@ from . import auto_alert_v2
 app.include_router(auto_alert_v2.router)
 
 # Import unified auth and employee management
-from .auth import unified_login, simple_login, fixed_auth, mobile_auth
+from .auth import unified_login, simple_login, fixed_auth, mobile_auth, forgot_password
 from . import run_migration
 from .admin import employee_management as emp_mgmt
 
@@ -293,6 +293,9 @@ app.include_router(unified_login.router)
 # Register fixed auth router (backup)
 app.include_router(fixed_auth.router)
 app.include_router(mobile_auth.router)
+
+# Register forgot password router (Block 24F)
+app.include_router(forgot_password.router)
 app.include_router(run_migration.router)
 
 # Register password auth router
