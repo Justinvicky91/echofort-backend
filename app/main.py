@@ -215,6 +215,10 @@ def make_app():
     app.include_router(device_permissions_management.router)
     app.include_router(employee_management_enhanced.router)
     app.include_router(api_management.router)
+    
+    # Block 24: RBAC (Role-Based Access Control)
+    from .rbac import routes as rbac_routes
+    app.include_router(rbac_routes.router)
 
 
 
