@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 import bcrypt
 from ..utils import jwt_encode
 from ..deps import get_settings
-from ..rbac import get_permissions, get_sidebar_items_for_role
+# Temporarily disabled RBAC imports to debug Railway crash
+# from ..rbac import get_permissions, get_sidebar_items_for_role
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -89,8 +90,9 @@ async def simple_login(payload: dict, request: Request):
                 "is_super_admin": is_super,
                 "department": dept
             },
-            "permissions": get_permissions(emp_role),
-            "sidebar_items": get_sidebar_items_for_role(emp_role),
+            # Temporarily disabled RBAC response fields
+            # "permissions": get_permissions(emp_role),
+            # "sidebar_items": get_sidebar_items_for_role(emp_role),
             "redirect": "/admin/dashboard"
         }
         
