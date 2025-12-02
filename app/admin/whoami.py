@@ -44,20 +44,23 @@ async def whoami(request: Request):
         if not user_row:
             raise HTTPException(404, "User not found in database")
         
+        # user_row is a tuple: (id, username, role, is_super_admin, department)
+        user_id, username, db_role, is_super_admin, department = user_row
+        
         # Get permissions for this role
         from ..rbac import get_permissions, get_sidebar_items_for_role
         
-        permissions = get_permissions(role)
-        sidebar_items = get_sidebar_items_for_role(role)
+        permissions = get_permissions(db_role)
+        sidebar_items = get_sidebar_items_for_role(db_role)
         
         return {
             "success": True,
             "user": {
-                "id": user_row["id"],
-                "username": user_row["username"],
-                "role": user_row["role"],
-                "is_super_admin": user_row["is_super_admin"],
-                "department": user_row["department"],
+                "id": user_id,
+                "username": username,
+                "role": db_role,
+                "is_super_admin": is_super_admin,
+                "department": department,
             },
             "token_payload": {
                 "employee_id": employee_id,

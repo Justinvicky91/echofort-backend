@@ -48,6 +48,9 @@ async def fix_founder_account(request: Request):
         
         results = []
         for account in founder_accounts:
+            # account is a tuple: (id, username, role, is_super_admin, department)
+            account_id, username, role, is_super_admin, department = account
+            
             # Update to super_admin role
             await db.execute(
                 text("""
@@ -57,28 +60,29 @@ async def fix_founder_account(request: Request):
                     department = 'Executive'
                 WHERE id = :id
                 """),
-                {"id": account["id"]}
+                {"id": account_id}
             )
             
             # Fetch updated account
             updated_result = await db.execute(
                 text("SELECT id, username, role, is_super_admin, department FROM employees WHERE id = :id"),
-                {"id": account["id"]}
+                {"id": account_id}
             )
             updated = updated_result.first()
+            # updated is also a tuple: (id, username, role, is_super_admin, department)
             
             results.append({
-                "id": account["id"],
-                "username": account["username"],
+                "id": account_id,
+                "username": username,
                 "before": {
-                    "role": account["role"],
-                    "is_super_admin": account["is_super_admin"],
-                    "department": account["department"],
+                    "role": role,
+                    "is_super_admin": is_super_admin,
+                    "department": department,
                 },
                 "after": {
-                    "role": updated["role"],
-                    "is_super_admin": updated["is_super_admin"],
-                    "department": updated["department"],
+                    "role": updated[2],  # role is 3rd column
+                    "is_super_admin": updated[3],  # is_super_admin is 4th column
+                    "department": updated[4],  # department is 5th column
                 }
             })
         
