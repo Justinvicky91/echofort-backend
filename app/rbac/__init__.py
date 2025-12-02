@@ -16,6 +16,8 @@ from .permissions import (
     get_sidebar_items_for_role,
 )
 
+from .middleware import guard_admin
+
 __all__ = [
     "Role",
     "Permission",
@@ -27,4 +29,5 @@ __all__ = [
     "get_roles_for_permission",
     "is_admin_role",
     "get_sidebar_items_for_role",
+    "guard_admin",
 ]

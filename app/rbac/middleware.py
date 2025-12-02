@@ -12,6 +12,32 @@ from .permissions import has_permission, is_admin_role, Permission
 from ..utils import jwt_decode
 
 
+# FastAPI Dependencies for route protection
+async def guard_admin(request: Request):
+    """
+    FastAPI dependency that ensures the current user is an admin or super admin.
+    Raises 403 if the user is not authorized.
+    
+    Usage:
+        @router.post("/chat", dependencies=[Depends(guard_admin)])
+        async def chat_endpoint(request: Request):
+            ...
+    """
+    role = get_current_user_role(request)
+    if not role:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Authentication required"
+        )
+    
+    if not is_admin_role(role):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access denied. Admin role required. Your role: {role}"
+        )
+    return role
+
+
 def get_current_user_role(request: Request) -> Optional[str]:
     """
     Extract the current user's role from the JWT token.
