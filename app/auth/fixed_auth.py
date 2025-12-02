@@ -204,14 +204,44 @@ async def verify_password_step(payload: dict, request: Request):
                         "username": emp_username
                     }
                 else:
-                    # TOTP not set up - require setup
-                    print(f"⚠️ TOTP not enabled - requiring setup")
+                    # TOTP disabled - allow password-only login (TEMPORARY DEV MODE)
+                    print(f"⚠️ TOTP disabled - password-only login (TEMP DEV MODE)")
+                    
+                    # Create session token (same as regular employee)
+                    device_id = payload.get("device_id", "web")
+                    
+                    token_data = {
+                        "sub": str(emp_id),
+                        "employee_id": str(emp_id),
+                        "user_type": "super_admin",
+                        "role": emp_role,
+                        "device_id": device_id,
+                        "exp": (datetime.utcnow() + timedelta(hours=8)).timestamp()
+                    }
+                    
+                    token = jwt_encode(token_data)
+                    
+                    # Get permissions for super_admin
+                    from ..rbac.permissions import get_permissions, get_sidebar_items
+                    permissions = get_permissions(emp_role)
+                    sidebar_items = get_sidebar_items(emp_role)
+                    
+                    print(f"✅ Login successful for Super Admin (TEMP DEV MODE): {identifier}")
+                    
                     return {
-                        "requires_totp": True,
-                        "totp_enabled": False,
-                        "message": "Set up Google Authenticator for 2FA",
-                        "username": emp_username,
-                        "setup_required": True
+                        "token": token,
+                        "user": {
+                            "id": emp_id,
+                            "employee_id": emp_id,
+                            "username": emp_username,
+                            "role": emp_role,
+                            "user_type": "super_admin",
+                            "is_super_admin": True
+                        },
+                        "permissions": permissions,
+                        "sidebar_items": sidebar_items,
+                        "redirect": "/super-admin",
+                        "warning": "TEMPORARY DEV MODE: TOTP disabled"
                     }
             
             # For regular employees, complete login without OTP
