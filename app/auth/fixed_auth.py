@@ -222,9 +222,9 @@ async def verify_password_step(payload: dict, request: Request):
                     token = jwt_encode(token_data)
                     
                     # Get permissions for super_admin
-                    from ..rbac.permissions import get_permissions, get_sidebar_items
+                    from ..rbac.permissions import get_permissions, get_sidebar_items_for_role
                     permissions = get_permissions(emp_role)
-                    sidebar_items = get_sidebar_items(emp_role)
+                    sidebar_items = get_sidebar_items_for_role(emp_role)
                     
                     print(f"✅ Login successful for Super Admin (TEMP DEV MODE): {identifier}")
                     
