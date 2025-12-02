@@ -33,6 +33,7 @@ async def create_invoices_table(request: Request):
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         """))
+        await db.commit()
         
         # Create indexes
         await db.execute(text("CREATE INDEX IF NOT EXISTS idx_invoices_order_id ON invoices(order_id)"))
