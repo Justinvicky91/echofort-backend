@@ -203,8 +203,8 @@ async def verify_totp_login(payload: dict, request: Request):
         print(f"✅ TOTP 2FA login successful for: {emp_username}")
         
         # Get permissions and sidebar items for super_admin
-        from ..rbac import get_permissions_for_role, get_sidebar_items_for_role
-        permissions = get_permissions_for_role("super_admin")
+        from ..rbac import get_permissions, get_sidebar_items_for_role
+        permissions = get_permissions("super_admin")
         sidebar_items = get_sidebar_items_for_role("super_admin")
         
         return {
