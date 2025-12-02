@@ -7,7 +7,7 @@ Provides current user's role and permissions for debugging.
 from fastapi import APIRouter, Request, HTTPException
 from ..utils import jwt_decode
 
-router = APIRouter()
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("/whoami")

@@ -6,7 +6,7 @@ One-time endpoint to ensure the Founder's account has super_admin role.
 
 from fastapi import APIRouter, Request, HTTPException
 
-router = APIRouter()
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.post("/fix-founder-account")
