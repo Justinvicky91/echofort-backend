@@ -218,11 +218,12 @@ def make_app():
     
     # Block 24: RBAC (Role-Based Access Control)
     from .rbac import routes as rbac_routes
-    from .admin import create_test_employees
+    from .admin import create_test_employees, temp_dev_mode
     app.include_router(rbac_routes.router)
     app.include_router(create_test_employees.router)
     app.include_router(whoami.router)
     app.include_router(fix_founder_account.router)
+    app.include_router(temp_dev_mode.router)  # TEMPORARY: Disable TOTP for testing
 
 
 
