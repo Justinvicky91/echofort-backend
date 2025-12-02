@@ -466,7 +466,9 @@ async def test_razorpay_live_connection():
 
 
 class CreateOrderLiveRequest(BaseModel):
-    amount: int = 100  # Default ₹1 for testing
+    plan_id: str = "internal-test"
+    amount: Optional[int] = None  # Will be calculated based on is_internal_test
+    is_internal_test: bool = False  # True for ₹1 tests, False for real plan prices
     currency: str = "INR"
     purpose: str = "live-test"
     customer_id: str = "superadmin-live-test"
@@ -486,14 +488,36 @@ async def create_razorpay_order_live(payload: CreateOrderLiveRequest):
         }
     
     try:
+        # Determine amount based on is_internal_test flag
+        if payload.is_internal_test:
+            # Internal test: ₹1 (100 paise)
+            amount = 100
+            notes_mode = "internal_test"
+        else:
+            # Real customer: Use full plan amount
+            # If amount is provided, use it; otherwise calculate from plan_id
+            if payload.amount:
+                amount = payload.amount
+            else:
+                # Default plan prices (can be extended with actual plan lookup)
+                plan_prices = {
+                    "basic": 39900,      # ₹399
+                    "personal": 79900,   # ₹799
+                    "family": 149900,    # ₹1499
+                }
+                amount = plan_prices.get(payload.plan_id, 100)
+            notes_mode = "real_customer"
+        
         order_data = {
-            "amount": payload.amount,
+            "amount": amount,
             "currency": payload.currency,
-            "receipt": f"live_test_{int(datetime.utcnow().timestamp())}",
+            "receipt": f"live_{'test' if payload.is_internal_test else 'order'}_{int(datetime.utcnow().timestamp())}",
             "notes": {
                 "purpose": payload.purpose,
                 "customer_id": payload.customer_id,
-                "mode": RAZORPAY_MODE
+                "mode": notes_mode,
+                "plan_id": payload.plan_id,
+                "is_internal_test": str(payload.is_internal_test)
             }
         }
         
