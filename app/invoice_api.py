@@ -40,7 +40,7 @@ async def list_invoices(request: Request, limit: int = 100, offset: int = 0):
             LIMIT :limit OFFSET :offset
         """)
         
-        results = await db.fetch_all(query, {"limit": limit, "offset": offset})
+        results = (await db.execute(query, {"limit": limit, "offset": offset})).fetchall()
         
         invoices = []
         for row in results:
@@ -100,7 +100,7 @@ async def get_invoice(request: Request, invoice_id: int):
             WHERE i.id = :invoice_id
         """)
         
-        result = await db.fetch_one(query, {"invoice_id": invoice_id})
+        result = (await db.execute(query, {"invoice_id": invoice_id})).fetchone()
         
         if not result:
             raise HTTPException(404, "Invoice not found")
@@ -147,7 +147,7 @@ async def download_invoice(request: Request, invoice_id: int):
             WHERE id = :invoice_id
         """)
         
-        result = await db.fetch_one(query, {"invoice_id": invoice_id})
+        result = (await db.execute(query, {"invoice_id": invoice_id})).fetchone()
         
         if not result:
             raise HTTPException(404, "Invoice not found")
@@ -206,7 +206,7 @@ async def get_invoice_html(request: Request, invoice_id: int):
             WHERE id = :invoice_id
         """)
         
-        result = await db.fetch_one(query, {"invoice_id": invoice_id})
+        result = (await db.execute(query, {"invoice_id": invoice_id})).fetchone()
         
         if not result or not result[0]:
             raise HTTPException(404, "Invoice HTML not found")
