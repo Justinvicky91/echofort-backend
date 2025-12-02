@@ -217,10 +217,11 @@ def make_app():
     app.include_router(api_management.router)
     
     # Block 24: RBAC (Role-Based Access Control)
-    from .rbac import routes as rbac_routes
-    from .admin import create_test_employees
-    app.include_router(rbac_routes.router)
-    app.include_router(create_test_employees.router)
+    # Temporarily disabled to debug Railway crash
+    # from .rbac import routes as rbac_routes
+    # from .admin import create_test_employees
+    # app.include_router(rbac_routes.router)
+    # app.include_router(create_test_employees.router)
 
 
 
