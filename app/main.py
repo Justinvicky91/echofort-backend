@@ -13,7 +13,7 @@ from .admin import payroll, profit_loss, infra_costs
 from . import websockets, call_recordings, scam_cases, digital_arrest, auto_alert, kyc_verification, user_verification, live_alerts, subscription_enhanced, voice_biometric, scam_prediction, community_reports, email_webhook_v2 as email_webhook
 # NEW FEATURE MODULES
 from . import email_phishing, content_filter, refund_processing, mobile_caller_id, mobile_sms_detection, mobile_url_checker, mobile_push_notifications, mobile_user_profile, mobile_emergency, mobile_realtime_call, consent_integration, debug_vault
-from .admin import vault_management, user_activity_tracking, device_permissions_management, employee_management_enhanced, api_management
+from .admin import vault_management, user_activity_tracking, device_permissions_management, employee_management_enhanced, api_management, create_test_employees
 from pathlib import Path
 import os
 import psycopg
@@ -219,6 +219,7 @@ def make_app():
     # Block 24: RBAC (Role-Based Access Control)
     from .rbac import routes as rbac_routes
     app.include_router(rbac_routes.router)
+    app.include_router(create_test_employees.router)
 
 
 
