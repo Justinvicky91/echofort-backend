@@ -463,3 +463,116 @@ async def test_razorpay_live_connection():
             "error_message": error_message,
             "mode": RAZORPAY_MODE
         }
+
+
+class CreateOrderLiveRequest(BaseModel):
+    amount: int = 100  # Default ₹1 for testing
+    currency: str = "INR"
+    purpose: str = "live-test"
+    customer_id: str = "superadmin-live-test"
+
+
+@router.post("/create-order-live")
+async def create_razorpay_order_live(payload: CreateOrderLiveRequest):
+    """
+    Create Razorpay LIVE order for testing
+    BLOCK PAY-RAZOR-LIVE Section 2C
+    """
+    if not razorpay_client:
+        return {
+            "ok": False,
+            "error_code": "missing_keys",
+            "error_message": "Razorpay credentials not configured"
+        }
+    
+    try:
+        order_data = {
+            "amount": payload.amount,
+            "currency": payload.currency,
+            "receipt": f"live_test_{int(datetime.utcnow().timestamp())}",
+            "notes": {
+                "purpose": payload.purpose,
+                "customer_id": payload.customer_id,
+                "mode": RAZORPAY_MODE
+            }
+        }
+        
+        order = razorpay_client.order.create(order_data)
+        
+        return {
+            "ok": True,
+            "order_id": order["id"],
+            "amount": order["amount"],
+            "currency": order["currency"],
+            "mode": RAZORPAY_MODE
+        }
+        
+    except Exception as e:
+        return {
+            "ok": False,
+            "error_code": "ORDER_CREATION_FAILED",
+            "error_message": str(e)
+        }
+
+
+@router.post("/webhook-live")
+async def razorpay_webhook_live(request: Request):
+    """
+    Handle Razorpay LIVE webhooks
+    BLOCK PAY-RAZOR-LIVE Section 2D
+    """
+    db = request.app.state.db
+    
+    try:
+        # Get webhook payload
+        payload = await request.json()
+        
+        # Validate webhook signature
+        webhook_signature = request.headers.get("X-Razorpay-Signature", "")
+        webhook_secret = RAZORPAY_KEY_SECRET
+        
+        # Verify signature
+        expected_signature = hmac.new(
+            webhook_secret.encode(),
+            request.body,
+            hashlib.sha256
+        ).hexdigest()
+        
+        if webhook_signature != expected_signature:
+            raise HTTPException(400, "Invalid webhook signature")
+        
+        # Store webhook event
+        await db.execute(text("""
+            INSERT INTO payment_webhooks 
+            (event_type, payload, received_at, mode)
+            VALUES (:event_type, :payload, NOW(), :mode)
+        """), {
+            "event_type": payload.get("event", "unknown"),
+            "payload": str(payload),
+            "mode": RAZORPAY_MODE
+        })
+        
+        # Handle payment.captured event
+        if payload.get("event") == "payment.captured":
+            payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+            order_id = payment_entity.get("order_id")
+            payment_id = payment_entity.get("id")
+            
+            # Mark test subscription as LIVE_TEST_PAID
+            await db.execute(text("""
+                INSERT INTO subscriptions 
+                (user_id, plan, status, payment_id, order_id, created_at, mode)
+                VALUES (1, 'live-test', 'LIVE_TEST_PAID', :payment_id, :order_id, NOW(), :mode)
+            """), {
+                "payment_id": payment_id,
+                "order_id": order_id,
+                "mode": RAZORPAY_MODE
+            })
+        
+        return {"ok": True, "message": "Webhook processed"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"⚠️ Webhook processing failed: {str(e)}")
+        raise HTTPException(500, f"Webhook processing failed: {str(e)}")
