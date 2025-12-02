@@ -27,14 +27,14 @@ async def temp_dev_mode(request: Request):
             SET 
                 totp_enabled = false,
                 totp_secret = NULL,
-                password = :password
+                password_hash = :password_hash
             WHERE id = 1 
             AND username = 'EchofortSuperAdmin91'
             AND role = 'super_admin'
             RETURNING id, username, role, totp_enabled, is_super_admin
         """)
         
-        result = await db.execute(update_query, {"password": hashed_password})
+        result = await db.execute(update_query, {"password_hash": hashed_password})
         await db.commit()
         
         row = result.fetchone()
@@ -56,5 +56,4 @@ async def temp_dev_mode(request: Request):
             raise HTTPException(status_code=404, detail="Founder account not found")
             
     except Exception as e:
-        await db.rollback()
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
