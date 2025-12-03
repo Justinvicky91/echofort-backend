@@ -35,7 +35,7 @@ async def list_invoices(request: Request, limit: int = 100, offset: int = 0):
                 u.name as user_name,
                 u.email as user_email
             FROM invoices i
-            LEFT JOIN users u ON i.user_id = u.user_id
+            LEFT JOIN users u ON i.user_id = u.id
             ORDER BY i.created_at DESC
             LIMIT :limit OFFSET :offset
         """)
@@ -96,7 +96,7 @@ async def get_invoice(request: Request, invoice_id: int):
                 u.name as user_name,
                 u.email as user_email
             FROM invoices i
-            LEFT JOIN users u ON i.user_id = u.user_id
+            LEFT JOIN users u ON i.user_id = u.id
             WHERE i.id = :invoice_id
         """)
         
