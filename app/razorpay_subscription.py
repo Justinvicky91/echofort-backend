@@ -617,6 +617,16 @@ async def razorpay_webhook_live(request: Request):
             is_internal_test = (amount == 100)
             print(f"   Internal Test: {is_internal_test}")
             
+            # Determine plan based on amount
+            if amount == 39900:  # ₹399
+                plan_name = "basic"
+            elif amount == 79900:  # ₹799
+                plan_name = "personal"
+            elif amount == 149900:  # ₹1499
+                plan_name = "family"
+            else:
+                plan_name = "test"  # For internal tests or unknown amounts
+            
             # Generate unique invoice number
             now = datetime.utcnow()
             month_prefix = now.strftime("%Y%m")
