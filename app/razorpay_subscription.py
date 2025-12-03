@@ -657,6 +657,8 @@ async def razorpay_webhook_live(request: Request):
             # Determine user_id
             user_id = 1  # SuperAdmin for now
             
+            print("📝 Invoice creation started...")
+            
             # Insert invoice
             await db.execute(text("""
                 INSERT INTO invoices 
@@ -677,6 +679,7 @@ async def razorpay_webhook_live(request: Request):
             })
             
             print(f"✅ Invoice created: {invoice_number}")
+            print("📝 Invoice creation finished")
             
             # Activate subscription (only for real payments)
             if not is_internal_test:
