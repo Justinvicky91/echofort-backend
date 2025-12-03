@@ -31,7 +31,7 @@ async def list_invoices(request: Request, limit: int = 100, offset: int = 0):
                 i.status,
                 i.is_internal_test,
                 i.created_at,
-                i.pdf_url,
+                i.file_path as pdf_url,
                 u.name as user_name,
                 u.email as user_email
             FROM invoices i
@@ -91,7 +91,7 @@ async def get_invoice(request: Request, invoice_id: int):
                 i.status,
                 i.is_internal_test,
                 i.invoice_html,
-                i.pdf_url,
+                i.file_path as pdf_url,
                 i.created_at,
                 u.name as user_name,
                 u.email as user_email
@@ -142,7 +142,7 @@ async def download_invoice(request: Request, invoice_id: int):
         
         # Get invoice details
         query = text("""
-            SELECT invoice_number, pdf_url, invoice_html
+            SELECT invoice_number, file_path as pdf_url, invoice_html
             FROM invoices
             WHERE id = :invoice_id
         """)
