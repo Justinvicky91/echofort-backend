@@ -663,9 +663,9 @@ async def razorpay_webhook_live(request: Request):
             await db.execute(text("""
                 INSERT INTO invoices 
                 (user_id, razorpay_order_id, razorpay_payment_id, invoice_number,
-                 amount, currency, is_internal_test, status, invoice_html, pdf_url, created_at, updated_at)
+                 amount, currency, is_internal_test, status, invoice_html, file_path, created_at, updated_at)
                 VALUES (:user_id, :order_id, :payment_id, :invoice_number,
-                        :amount, :currency, :is_internal_test, 'paid', :html_content, :pdf_url, NOW(), NOW())
+                        :amount, :currency, :is_internal_test, 'paid', :html_content, :file_path, NOW(), NOW())
             """), {
                 "user_id": user_id,
                 "order_id": order_id,
@@ -675,7 +675,7 @@ async def razorpay_webhook_live(request: Request):
                 "currency": currency,
                 "is_internal_test": is_internal_test,
                 "html_content": html_content,
-                "pdf_url": pdf_url
+                "file_path": pdf_url
             })
             
             print(f"✅ Invoice created: {invoice_number}")
