@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api/razorpay", tags=["Razorpay Payment"])
 # Razorpay client initialization
 RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID", "")
 RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "")
+RAZORPAY_WEBHOOK_SECRET = os.getenv("RAZORPAY_WEBHOOK_SECRET", "")
 
 if RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET:
     razorpay_client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
@@ -563,28 +564,27 @@ async def razorpay_webhook_live(request: Request):
         # Log webhook received
         print(f"📥 Webhook received: {payload.get('event', 'unknown')}")
         
-        # Validate webhook signature
+        # Validate webhook signature using Razorpay's official utility
         webhook_signature = request.headers.get("X-Razorpay-Signature", "")
-        webhook_secret = RAZORPAY_KEY_SECRET
+        webhook_secret = RAZORPAY_WEBHOOK_SECRET
         
         if not webhook_secret:
             print("⚠️ Webhook secret not configured - skipping signature verification")
         else:
             try:
-                # Verify signature
-                expected_signature = hmac.new(
-                    str(webhook_secret).encode('utf-8'),
-                    body_bytes,
-                    hashlib.sha256
-                ).hexdigest()
-                
-                if webhook_signature != expected_signature:
-                    print(f"❌ Invalid webhook signature")
-                    print(f"   Expected: {expected_signature}")
-                    print(f"   Received: {webhook_signature}")
-                    raise HTTPException(400, "Invalid webhook signature")
-                
+                # Use Razorpay's official verification utility
+                razorpay_client.utility.verify_webhook_signature(
+                    body_str,  # Raw request body as string
+                    webhook_signature,
+                    webhook_secret
+                )
                 print("✅ Webhook signature verified")
+            except razorpay.errors.SignatureVerificationError as e:
+                print(f"❌ Invalid webhook signature")
+                print(f"   Error: {str(e)}")
+                print(f"   Secret length: {len(webhook_secret) if webhook_secret else 0}")
+                print(f"   Body length: {len(body_str)}")
+                raise HTTPException(400, "Invalid webhook signature")
             except Exception as e:
                 print(f"❌ Signature verification error: {str(e)}")
                 import traceback
