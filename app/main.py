@@ -186,6 +186,8 @@ def make_app():
     app.include_router(invoice_api.router)
     from . import run_invoice_migration
     app.include_router(run_invoice_migration.router)
+    from . import check_schema
+    app.include_router(check_schema.router)
     app.include_router(refund_processing.router)
     # REMOVED: execute_sql.router (security risk - raw SQL execution)
     # NEW ROUTERS - Critical APIs
