@@ -31,11 +31,8 @@ async def list_invoices(request: Request, limit: int = 100, offset: int = 0):
                 i.status,
                 i.is_internal_test,
                 i.created_at,
-                i.file_path as pdf_url,
-                u.name as user_name,
-                u.email as user_email
+                i.file_path as pdf_url
             FROM invoices i
-            LEFT JOIN users u ON i.user_id = u.id
             ORDER BY i.created_at DESC
             LIMIT :limit OFFSET :offset
         """)
@@ -55,9 +52,7 @@ async def list_invoices(request: Request, limit: int = 100, offset: int = 0):
                 "status": row[7],
                 "is_internal_test": row[8],
                 "created_at": row[9].isoformat() if row[9] else None,
-                "pdf_url": row[10],
-                "user_name": row[11],
-                "user_email": row[12]
+                "pdf_url": row[10]
             })
         
         return {
@@ -92,11 +87,8 @@ async def get_invoice(request: Request, invoice_id: int):
                 i.is_internal_test,
                 i.invoice_html,
                 i.file_path as pdf_url,
-                i.created_at,
-                u.name as user_name,
-                u.email as user_email
+                i.created_at
             FROM invoices i
-            LEFT JOIN users u ON i.user_id = u.id
             WHERE i.id = :invoice_id
         """)
         
@@ -119,9 +111,7 @@ async def get_invoice(request: Request, invoice_id: int):
                 "is_internal_test": result[8],
                 "html_content": result[9],
                 "pdf_url": result[10],
-                "created_at": result[11].isoformat() if result[11] else None,
-                "user_name": result[12],
-                "user_email": result[13]
+                "created_at": result[11].isoformat() if result[11] else None
             }
         }
     
