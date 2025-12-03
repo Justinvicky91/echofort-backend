@@ -181,7 +181,7 @@ def make_app():
     app.include_router(infra_costs.router)
     app.include_router(websockets.router)
     # Note: ai_assistant.router already exists, just replace the file
-    app.include_router(invoice_generator.router)
+    # invoice_generator.router removed - using invoice_api.router instead
     from . import invoice_api
     app.include_router(invoice_api.router)
     from . import run_invoice_migration

@@ -12,9 +12,6 @@ from sqlalchemy import text
 import os
 
 
-router = APIRouter(prefix="/api/invoices", tags=["Invoices"])
-
-
 class InvoiceCreate(BaseModel):
     email: str
     plan: str
@@ -334,39 +331,4 @@ async def convert_html_to_pdf(html_content: str, output_path: str) -> bool:
         return False
 
 
-@router.post("/generate")
-async def gen_invoice(request: Request, inv: InvoiceCreate):
-    """Legacy invoice generation endpoint (kept for backward compatibility)"""
-    num = f"INV-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-    await request.app.state.db.execute(text("""
-        INSERT INTO invoices (invoice_number, user_id, order_id, payment_id, amount, currency, status, created_at)
-        VALUES (:num, 1, 'legacy', 'legacy', :amt, 'INR', 'paid', NOW())
-    """), {"num": num, "amt": int(inv.amount * 100)})
-    return {"invoice_number": num}
-
-
-@router.get("/list")
-async def list_invoices(request: Request):
-    """Get all invoices"""
-    result = (await request.app.state.db.execute(text("""
-        SELECT id, invoice_number, razorpay_order_id, razorpay_payment_id, amount, currency, 
-               is_internal_test, status, created_at
-        FROM invoices
-        ORDER BY created_at DESC
-        LIMIT 100
-    """))).fetchall()
-    
-    return {"invoices": [dict(row._mapping) for row in result]}
-
-
-@router.get("/{invoice_id}")
-async def get_invoice(invoice_id: int, request: Request):
-    """Get invoice details by ID"""
-    result = (await request.app.state.db.execute(text("""
-        SELECT * FROM invoices WHERE id = :id
-    """), {"id": invoice_id})).fetchone()
-    
-    if not result:
-        raise HTTPException(404, "Invoice not found")
-    
-    return dict(result._mapping)
+# Router endpoints removed - use invoice_api.py instead
