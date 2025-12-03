@@ -568,21 +568,28 @@ async def razorpay_webhook_live(request: Request):
         webhook_secret = RAZORPAY_KEY_SECRET
         
         if not webhook_secret:
-            print("⚠️ Webhook secret not configured")
-            return {"ok": True, "message": "Webhook secret not configured"}
-        
-        # Verify signature
-        expected_signature = hmac.new(
-            webhook_secret.encode('utf-8'),
-            body_bytes,
-            hashlib.sha256
-        ).hexdigest()
-        
-        if webhook_signature != expected_signature:
-            print(f"❌ Invalid webhook signature")
-            raise HTTPException(400, "Invalid webhook signature")
-        
-        print("✅ Webhook signature verified")
+            print("⚠️ Webhook secret not configured - skipping signature verification")
+        else:
+            try:
+                # Verify signature
+                expected_signature = hmac.new(
+                    str(webhook_secret).encode('utf-8'),
+                    body_bytes,
+                    hashlib.sha256
+                ).hexdigest()
+                
+                if webhook_signature != expected_signature:
+                    print(f"❌ Invalid webhook signature")
+                    print(f"   Expected: {expected_signature}")
+                    print(f"   Received: {webhook_signature}")
+                    raise HTTPException(400, "Invalid webhook signature")
+                
+                print("✅ Webhook signature verified")
+            except Exception as e:
+                print(f"❌ Signature verification error: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(500, f"Signature verification failed: {str(e)}")
         
         # Handle payment.captured event
         if payload.get("event") == "payment.captured":
