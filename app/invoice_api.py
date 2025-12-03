@@ -24,8 +24,8 @@ async def list_invoices(request: Request, limit: int = 100, offset: int = 0):
                 i.id,
                 i.invoice_number,
                 i.user_id,
-                i.order_id,
-                i.payment_id,
+                i.razorpay_order_id,
+                i.razorpay_payment_id,
                 i.amount,
                 i.currency,
                 i.status,
@@ -35,7 +35,7 @@ async def list_invoices(request: Request, limit: int = 100, offset: int = 0):
                 u.name as user_name,
                 u.email as user_email
             FROM invoices i
-            LEFT JOIN users u ON i.user_id = u.id
+            LEFT JOIN users u ON i.user_id = u.user_id
             ORDER BY i.created_at DESC
             LIMIT :limit OFFSET :offset
         """)
@@ -84,19 +84,19 @@ async def get_invoice(request: Request, invoice_id: int):
                 i.id,
                 i.invoice_number,
                 i.user_id,
-                i.order_id,
-                i.payment_id,
+                i.razorpay_order_id,
+                i.razorpay_payment_id,
                 i.amount,
                 i.currency,
                 i.status,
                 i.is_internal_test,
-                i.html_content,
+                i.invoice_html,
                 i.pdf_url,
                 i.created_at,
                 u.name as user_name,
                 u.email as user_email
             FROM invoices i
-            LEFT JOIN users u ON i.user_id = u.id
+            LEFT JOIN users u ON i.user_id = u.user_id
             WHERE i.id = :invoice_id
         """)
         
@@ -142,7 +142,7 @@ async def download_invoice(request: Request, invoice_id: int):
         
         # Get invoice details
         query = text("""
-            SELECT invoice_number, pdf_url, html_content
+            SELECT invoice_number, pdf_url, invoice_html
             FROM invoices
             WHERE id = :invoice_id
         """)
@@ -201,7 +201,7 @@ async def get_invoice_html(request: Request, invoice_id: int):
         db = request.app.state.db
         
         query = text("""
-            SELECT html_content
+            SELECT invoice_html
             FROM invoices
             WHERE id = :invoice_id
         """)
