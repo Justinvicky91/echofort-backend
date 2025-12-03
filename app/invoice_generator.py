@@ -348,25 +348,25 @@ async def gen_invoice(request: Request, inv: InvoiceCreate):
 @router.get("/list")
 async def list_invoices(request: Request):
     """Get all invoices"""
-    result = await request.app.state.db.fetch_all(text("""
-        SELECT id, invoice_number, order_id, payment_id, amount, currency, 
+    result = (await request.app.state.db.execute(text("""
+        SELECT id, invoice_number, razorpay_order_id, razorpay_payment_id, amount, currency, 
                is_internal_test, status, created_at
         FROM invoices
         ORDER BY created_at DESC
         LIMIT 100
-    """))
+    """))).fetchall()
     
-    return {"invoices": [dict(row) for row in result]}
+    return {"invoices": [dict(row._mapping) for row in result]}
 
 
 @router.get("/{invoice_id}")
 async def get_invoice(invoice_id: int, request: Request):
     """Get invoice details by ID"""
-    result = await request.app.state.db.fetch_one(text("""
+    result = (await request.app.state.db.execute(text("""
         SELECT * FROM invoices WHERE id = :id
-    """), {"id": invoice_id})
+    """), {"id": invoice_id})).fetchone()
     
     if not result:
         raise HTTPException(404, "Invoice not found")
     
-    return dict(result)
+    return dict(result._mapping)
