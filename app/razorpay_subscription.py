@@ -592,7 +592,10 @@ async def razorpay_webhook_live(request: Request):
                 raise HTTPException(500, f"Signature verification failed: {str(e)}")
         
         # Handle payment.captured event
-        if payload.get("event") == "payment.captured":
+        event_type = payload.get("event")
+        print(f"🔍 Event type check: '{event_type}' == 'payment.captured' ? {event_type == 'payment.captured'}")
+        
+        if event_type == "payment.captured":
             print("💰 Processing payment.captured event")
             
             # Extract payment details
