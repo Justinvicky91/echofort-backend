@@ -184,6 +184,8 @@ def make_app():
     # invoice_generator.router removed - using invoice_api.router instead
     from . import invoice_api
     app.include_router(invoice_api.router)
+    from . import financial_api
+    app.include_router(financial_api.router)
     from . import run_invoice_migration
     app.include_router(run_invoice_migration.router)
     from . import check_schema
