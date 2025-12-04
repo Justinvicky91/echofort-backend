@@ -596,7 +596,7 @@ async def razorpay_webhook_live(request: Request):
         print(f"🔍 Event type check: '{event_type}' == 'payment.captured' ? {event_type == 'payment.captured'}")
         
         if event_type == "payment.captured":
-            print("💰 Processing payment.captured event")
+            print("💰 Processing payment.captured event", flush=True)
             
             # Extract payment details
             payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
@@ -611,14 +611,14 @@ async def razorpay_webhook_live(request: Request):
             currency = payment_entity.get("currency", "INR")
             email = payment_entity.get("email", "")
             
-            print(f"   Order ID: {order_id}")
-            print(f"   Payment ID: {payment_id}")
-            print(f"   Amount: ₹{amount/100}")
-            print(f"   Email: {email}")
+            print(f"   Order ID: {order_id}", flush=True)
+            print(f"   Payment ID: {payment_id}", flush=True)
+            print(f"   Amount: ₹{amount/100}", flush=True)
+            print(f"   Email: {email}", flush=True)
             
             # Determine if internal test (₹1 = 100 paise)
             is_internal_test = (amount == 100)
-            print(f"   Internal Test: {is_internal_test}")
+            print(f"   Internal Test: {is_internal_test}", flush=True)
             
             # Determine plan based on amount
             if amount == 39900:  # ₹399
@@ -630,7 +630,7 @@ async def razorpay_webhook_live(request: Request):
             else:
                 plan_name = "test"  # For internal tests or unknown amounts
             
-            print(f"   Plan Name: {plan_name}")
+            print(f"   Plan Name: {plan_name}", flush=True)
             
             # Generate unique invoice number
             now = datetime.utcnow()
@@ -645,7 +645,7 @@ async def razorpay_webhook_live(request: Request):
             count = (count_result[0] if count_result else 0) + 1
             invoice_number = f"INV-{month_prefix}-{count:05d}"
             
-            print(f"   Invoice Number: {invoice_number}")
+            print(f"   Invoice Number: {invoice_number}", flush=True)
             
             # Generate invoice HTML
             html_content = generate_invoice_html(
@@ -667,12 +667,12 @@ async def razorpay_webhook_live(request: Request):
             pdf_generated = await convert_html_to_pdf(html_content, pdf_path)
             pdf_url = f"/invoices/{invoice_number}.pdf" if pdf_generated else None
             
-            print(f"   PDF Generated: {pdf_generated}")
+            print(f"   PDF Generated: {pdf_generated}", flush=True)
             
             # Determine user_id
             user_id = 1  # SuperAdmin for now
             
-            print("📝 Invoice creation started...")
+            print("📝 Invoice creation started...", flush=True)
             
             # Insert invoice
             await db.execute(text("""
@@ -695,8 +695,8 @@ async def razorpay_webhook_live(request: Request):
                 "file_path": pdf_url
             })
             
-            print(f"✅ Invoice created: {invoice_number}")
-            print("📝 Invoice creation finished")
+            print(f"✅ Invoice created: {invoice_number}", flush=True)
+            print("📝 Invoice creation finished", flush=True)
             
             # Activate subscription (only for real payments)
             if not is_internal_test:
