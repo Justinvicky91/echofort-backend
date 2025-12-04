@@ -158,22 +158,27 @@ async def download_invoice(request: Request, invoice_id: int):
         
         # If no PDF, generate on-the-fly from HTML
         if html_content:
-            from .invoice_generator import convert_html_to_pdf
-            
-            pdf_dir = "/tmp/invoices"
-            os.makedirs(pdf_dir, exist_ok=True)
-            pdf_path = f"{pdf_dir}/{invoice_number}.pdf"
-            
-            success = await convert_html_to_pdf(html_content, pdf_path)
-            
-            if success and os.path.exists(pdf_path):
-                return FileResponse(
-                    pdf_path,
-                    media_type="application/pdf",
-                    filename=f"{invoice_number}.pdf"
-                )
+            try:
+                from weasyprint import HTML
+                
+                pdf_dir = "/tmp/invoices"
+                os.makedirs(pdf_dir, exist_ok=True)
+                pdf_path = f"{pdf_dir}/{invoice_number}.pdf"
+                
+                # Generate PDF from HTML
+                HTML(string=html_content).write_pdf(pdf_path)
+                
+                if os.path.exists(pdf_path):
+                    return FileResponse(
+                        pdf_path,
+                        media_type="application/pdf",
+                        filename=f"{invoice_number}.pdf"
+                    )
+            except Exception as pdf_error:
+                print(f"❌ PDF generation error: {str(pdf_error)}")
+                raise HTTPException(500, f"Failed to generate PDF: {str(pdf_error)}")
         
-        raise HTTPException(404, "Invoice PDF not available")
+        raise HTTPException(404, "Invoice HTML not available")
     
     except HTTPException:
         raise
