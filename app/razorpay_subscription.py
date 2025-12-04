@@ -627,6 +627,8 @@ async def razorpay_webhook_live(request: Request):
             else:
                 plan_name = "test"  # For internal tests or unknown amounts
             
+            print(f"   Plan Name: {plan_name}")
+            
             # Generate unique invoice number
             now = datetime.utcnow()
             month_prefix = now.strftime("%Y%m")
