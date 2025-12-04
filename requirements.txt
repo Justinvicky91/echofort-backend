@@ -28,3 +28,4 @@ reportlab==4.0.7
 apscheduler==3.11.1
 beautifulsoup4==4.12.3
 requests==2.31.0
+weasyprint==62.3
