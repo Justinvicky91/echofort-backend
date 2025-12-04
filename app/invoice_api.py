@@ -159,21 +159,28 @@ async def download_invoice(request: Request, invoice_id: int):
         # If no PDF, generate on-the-fly from HTML
         if html_content:
             try:
-                from weasyprint import HTML
+                from xhtml2pdf import pisa
+                from io import BytesIO
                 
                 pdf_dir = "/tmp/invoices"
                 os.makedirs(pdf_dir, exist_ok=True)
                 pdf_path = f"{pdf_dir}/{invoice_number}.pdf"
                 
-                # Generate PDF from HTML
-                HTML(string=html_content).write_pdf(pdf_path)
+                # Generate PDF from HTML using xhtml2pdf
+                with open(pdf_path, "wb") as pdf_file:
+                    pisa_status = pisa.CreatePDF(
+                        html_content,
+                        dest=pdf_file
+                    )
                 
-                if os.path.exists(pdf_path):
+                if not pisa_status.err and os.path.exists(pdf_path):
                     return FileResponse(
                         pdf_path,
                         media_type="application/pdf",
                         filename=f"{invoice_number}.pdf"
                     )
+                else:
+                    raise Exception(f"PDF generation failed with status: {pisa_status.err}")
             except Exception as pdf_error:
                 print(f"❌ PDF generation error: {str(pdf_error)}")
                 raise HTTPException(500, f"Failed to generate PDF: {str(pdf_error)}")
