@@ -123,7 +123,7 @@ async def verify_otp(req: VerifyOTPRequest):
                     UPDATE users 
                     SET otp_verified = true, updated_at = NOW()
                     WHERE id = %s
-                """, (req.user_id,))
+                """, (user_id,))
                 
                 # Delete used OTP
                 cur.execute("DELETE FROM otps WHERE id = %s", (otp_id,))
