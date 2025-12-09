@@ -188,6 +188,8 @@ def make_app():
     app.include_router(invoice_api.router)
     from . import financial_api
     app.include_router(financial_api.router)
+    from . import user_dashboard_api
+    app.include_router(user_dashboard_api.router)
     from . import run_invoice_migration
     app.include_router(run_invoice_migration.router)
     from . import check_schema
