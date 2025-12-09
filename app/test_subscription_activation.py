@@ -19,7 +19,9 @@ async def test_activate_subscription(user_id: int, plan_id: str, request: Reques
         plan_id: Plan ID (basic, personal, family)
     """
     try:
-        db = request.app.state.db
+        # Get database connection from app state
+        from app.database import get_db
+        db = await anext(get_db())
         
         # Validate plan_id
         valid_plans = {
