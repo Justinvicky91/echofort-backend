@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str | None = None
 
     OPENAI_API_KEY: str = "dummy-placeholder"
+    SENDGRID_API_KEY: str | None = None
 
     AI_ENABLED: bool = True
     AI_MODE: str = "admin_only"
