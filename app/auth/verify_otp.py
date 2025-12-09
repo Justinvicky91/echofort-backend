@@ -12,7 +12,7 @@ import jwt
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 class VerifyOTPRequest(BaseModel):
-    user_id: int
+    email: str
     otp: str
 
 class VerifyOTPResponse(BaseModel):
@@ -55,8 +55,8 @@ async def verify_otp(req: VerifyOTPRequest):
                 cur.execute("""
                     SELECT id, email, name, otp_verified, dashboard_type, plan_id, subscription_status
                     FROM users 
-                    WHERE id = %s
-                """, (req.user_id,))
+                    WHERE email = %s
+                """, (req.email,))
                 
                 user_row = cur.fetchone()
                 if not user_row:
@@ -101,7 +101,7 @@ async def verify_otp(req: VerifyOTPRequest):
                     WHERE user_id = %s 
                     ORDER BY created_at DESC 
                     LIMIT 1
-                """, (req.user_id,))
+                """, (user_id,))
                 
                 otp_row = cur.fetchone()
                 if not otp_row:
