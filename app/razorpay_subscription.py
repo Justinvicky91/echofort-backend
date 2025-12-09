@@ -610,27 +610,39 @@ async def razorpay_webhook_live(request: Request):
             amount = payment_entity.get("amount", 0)  # in paise
             currency = payment_entity.get("currency", "INR")
             email = payment_entity.get("email", "")
+            notes = payment_entity.get("notes", {})
+            
+            # BLOCK S2: Extract user_id and plan_id from notes
+            user_id_from_notes = notes.get("user_id")
+            plan_id_from_notes = notes.get("plan_id")
             
             print(f"   Order ID: {order_id}", flush=True)
             print(f"   Payment ID: {payment_id}", flush=True)
             print(f"   Amount: ₹{amount/100}", flush=True)
             print(f"   Email: {email}", flush=True)
+            print(f"   Notes user_id: {user_id_from_notes}", flush=True)
+            print(f"   Notes plan_id: {plan_id_from_notes}", flush=True)
             
             # Determine if internal test (₹1 = 100 paise)
             is_internal_test = (amount == 100)
             print(f"   Internal Test: {is_internal_test}", flush=True)
             
-            # Determine plan based on amount
-            if amount == 39900:  # ₹399
+            # Determine plan - Priority 1: notes.plan_id, Priority 2: amount
+            if plan_id_from_notes:
+                plan_name = plan_id_from_notes
+                print(f"   Plan Name (from notes): {plan_name}", flush=True)
+            elif amount == 39900:  # ₹399
                 plan_name = "basic"
+                print(f"   Plan Name (from amount): {plan_name}", flush=True)
             elif amount == 79900:  # ₹799
                 plan_name = "personal"
+                print(f"   Plan Name (from amount): {plan_name}", flush=True)
             elif amount == 149900:  # ₹1499
                 plan_name = "family"
+                print(f"   Plan Name (from amount): {plan_name}", flush=True)
             else:
                 plan_name = "test"  # For internal tests or unknown amounts
-            
-            print(f"   Plan Name: {plan_name}", flush=True)
+                print(f"   Plan Name (fallback): {plan_name}", flush=True)
             
             # Generate unique invoice number
             now = datetime.utcnow()
@@ -669,21 +681,29 @@ async def razorpay_webhook_live(request: Request):
             
             print(f"   PDF Generated: {pdf_generated}", flush=True)
             
-            # BLOCK S2: Find user by email
+            # BLOCK S2: Find user by notes.user_id first, then fallback to email
             user_id = 1  # Default to SuperAdmin
-            user_email_for_lookup = email if email else None
             
-            if user_email_for_lookup:
+            # Priority 1: Use user_id from notes (BLOCK S2 flow)
+            if user_id_from_notes:
+                try:
+                    user_id = int(user_id_from_notes)
+                    print(f"   Using user_id from notes: {user_id}", flush=True)
+                except (ValueError, TypeError):
+                    print(f"   Invalid user_id in notes: {user_id_from_notes}", flush=True)
+            
+            # Priority 2: Fallback to email lookup
+            elif email:
                 try:
                     user_result = (await db.execute(text("""
                         SELECT id FROM users WHERE email = :email LIMIT 1
-                    """), {"email": user_email_for_lookup})).fetchone()
+                    """), {"email": email})).fetchone()
                     
                     if user_result:
                         user_id = user_result[0]
-                        print(f"   Found user_id: {user_id} for email: {user_email_for_lookup}", flush=True)
+                        print(f"   Found user_id: {user_id} for email: {email}", flush=True)
                     else:
-                        print(f"   No user found for email: {user_email_for_lookup}, using SuperAdmin", flush=True)
+                        print(f"   No user found for email: {email}, using SuperAdmin", flush=True)
                 except Exception as e:
                     print(f"   Error looking up user: {str(e)}", flush=True)
             
