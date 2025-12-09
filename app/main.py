@@ -19,7 +19,7 @@ import os
 import psycopg
 
 from .deps import get_settings
-from .auth import otp, device, password, reset_admin_password, debug_employees, mobile_auth
+from .auth import otp, device, password, reset_admin_password, debug_employees, mobile_auth, signup, verify_otp
 from .ai import voice, image
 from .billing import razorpay_webhooks, stripe_webhooks, invoice_generator, refund_processing
 from .admin import audit, supervoice, marketing, employees, privacy, export as export_csv, billing_management, user_management, debug_auth, fix_invoices_schema, fix_refunds_schema, fix_users_kyc_schema, fix_mobile_profile_schema, fix_evidence_vault_schema, fix_complaint_drafts_schema, fix_consent_log_schema, fix_extremism_fields_schema, fix_block_s2_schema, whoami, fix_founder_account
@@ -147,6 +147,8 @@ def make_app():
     app.include_router(otp.router)
     app.include_router(device.router)
     app.include_router(mobile_auth.router)
+    app.include_router(signup.router)
+    app.include_router(verify_otp.router)
     app.include_router(voice.router)
     app.include_router(image.router)
     app.include_router(razorpay_webhooks.router)

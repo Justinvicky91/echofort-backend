@@ -669,8 +669,23 @@ async def razorpay_webhook_live(request: Request):
             
             print(f"   PDF Generated: {pdf_generated}", flush=True)
             
-            # Determine user_id
-            user_id = 1  # SuperAdmin for now
+            # BLOCK S2: Find user by email
+            user_id = 1  # Default to SuperAdmin
+            user_email_for_lookup = email if email else None
+            
+            if user_email_for_lookup:
+                try:
+                    user_result = (await db.execute(text("""
+                        SELECT id FROM users WHERE email = :email LIMIT 1
+                    """), {"email": user_email_for_lookup})).fetchone()
+                    
+                    if user_result:
+                        user_id = user_result[0]
+                        print(f"   Found user_id: {user_id} for email: {user_email_for_lookup}", flush=True)
+                    else:
+                        print(f"   No user found for email: {user_email_for_lookup}, using SuperAdmin", flush=True)
+                except Exception as e:
+                    print(f"   Error looking up user: {str(e)}", flush=True)
             
             print("📝 Invoice creation started...", flush=True)
             
@@ -752,6 +767,35 @@ async def razorpay_webhook_live(request: Request):
                     })
                     
                     print(f"✅ Subscription activated: {plan_name}")
+                    
+                    # BLOCK S2: Update user entitlements
+                    try:
+                        # Determine dashboard_type based on plan
+                        dashboard_type = None
+                        if plan_name == "basic":
+                            dashboard_type = "basic"
+                        elif plan_name == "personal":
+                            dashboard_type = "personal"
+                        elif plan_name == "family":
+                            dashboard_type = "family_admin"
+                        
+                        if dashboard_type:
+                            await db.execute(text("""
+                                UPDATE users 
+                                SET plan_id = :plan_id,
+                                    subscription_status = 'active',
+                                    dashboard_type = :dashboard_type,
+                                    updated_at = NOW()
+                                WHERE id = :user_id
+                            """), {
+                                "user_id": user_id,
+                                "plan_id": plan_name,
+                                "dashboard_type": dashboard_type
+                            })
+                            
+                            print(f"✅ User entitlements updated: plan={plan_name}, dashboard={dashboard_type}", flush=True)
+                    except Exception as e:
+                        print(f"❌ Failed to update user entitlements: {str(e)}", flush=True)
                     
                 except Exception as e:
                     print(f"❌ Subscription activation failed: {str(e)}")
