@@ -1,6 +1,6 @@
 # app/main.py
 # NOTE: DATABASE_URL fix is now in app/__init__.py (runs automatically on package import)
-from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth, razorpay_subscription, stripe_subscription, legal_documents
+from . import social, gps, screentime, family, subscription, test_endpoints, test_users, debug_payment, test_admin_auth, razorpay_subscription, stripe_subscription, legal_documents, test_subscription_activation
 from fastapi import FastAPI, Request, HTTPException
 # REMOVED: execute_sql (security risk - raw SQL execution)
 from fastapi.middleware.cors import CORSMiddleware
@@ -213,6 +213,7 @@ def make_app():
     app.include_router(test_users.router)
     app.include_router(email_webhook.router)
     app.include_router(debug_payment.router)
+    app.include_router(test_subscription_activation.router)
     # NEW FEATURE ROUTERS - Complete missing features
     app.include_router(email_phishing.router)
     app.include_router(content_filter.router)
