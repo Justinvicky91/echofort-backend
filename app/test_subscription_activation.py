@@ -19,9 +19,8 @@ async def test_activate_subscription(user_id: int, plan_id: str, request: Reques
         plan_id: Plan ID (basic, personal, family)
     """
     try:
-        # Get database connection from app state
-        from app.database import get_db
-        db = await anext(get_db())
+        # Use the DBShim from app.state
+        db = request.app.state.db
         
         # Validate plan_id
         valid_plans = {
@@ -67,8 +66,6 @@ async def test_activate_subscription(user_id: int, plan_id: str, request: Reques
             'razorpay_id': f'pay_test_{plan_id}_user{user_id}'
         })
         
-        await db.commit()
-        
         # Fetch updated user
         result = await db.execute(text("""
             SELECT id, email, plan_id, subscription_status, dashboard_type
@@ -76,22 +73,26 @@ async def test_activate_subscription(user_id: int, plan_id: str, request: Reques
             WHERE id = :user_id
         """), {'user_id': user_id})
         
-        user = result.fetchone()
+        row = result.fetchone()
+        
+        if not row:
+            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
         
         return {
             "success": True,
             "message": f"Subscription activated for user {user_id} with plan {plan_id}",
             "user": {
-                "id": user[0],
-                "email": user[1],
-                "plan_id": user[2],
-                "subscription_status": user[3],
-                "dashboard_type": user[4]
+                "id": row[0],
+                "email": row[1],
+                "plan_id": row[2],
+                "subscription_status": row[3],
+                "dashboard_type": row[4]
             }
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
-        await db.rollback()
         import traceback
         return {
             "success": False,
