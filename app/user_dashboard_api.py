@@ -3,6 +3,7 @@ BLOCK S2 - User Dashboard API
 Returns plan-specific dashboard data for Basic, Personal, and Family plans
 Single endpoint for both web and mobile apps
 """
+# Redeploy to clear DB connection pool
 from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 from app.deps import get_settings
