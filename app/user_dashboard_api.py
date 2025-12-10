@@ -53,62 +53,69 @@ async def get_user_dashboard(current_user: dict = Depends(get_current_user_from_
     
     try:
         with psycopg.connect(dsn) as conn:
-            with conn.cursor() as cur:
-                # Get user details
-                cur.execute("""
-                    SELECT id, email, name, phone, plan_id, subscription_status, dashboard_type,
-                           country, state, district, created_at
-                    FROM users 
-                    WHERE id = %s
-                """, (user_id,))
-                
-                user_row = cur.fetchone()
-                if not user_row:
-                    raise HTTPException(status_code=404, detail="User not found")
-                
-                (uid, email, name, phone, plan_id, subscription_status, dashboard_type,
-                 country, state, district, created_at) = user_row
-                
-                user_info = {
-                    'id': uid,
-                    'email': email,
-                    'name': name,
-                    'phone': phone,
-                    'plan_id': plan_id,
-                    'subscription_status': subscription_status,
-                    'dashboard_type': dashboard_type,
-                    'location': {
-                        'country': country,
-                        'state': state,
-                        'district': district
-                    },
-                    'member_since': created_at.isoformat() if created_at else None
-                }
-                
-                # Determine dashboard data based on plan
-                if dashboard_type == 'basic':
-                    dashboard_data = await get_basic_dashboard_data(cur, user_id)
-                    upgrade_available = True
-                elif dashboard_type == 'personal':
-                    dashboard_data = await get_personal_dashboard_data(cur, user_id)
-                    upgrade_available = True  # Can upgrade to Family
-                elif dashboard_type == 'family_admin':
-                    dashboard_data = await get_family_dashboard_data(cur, user_id)
-                    upgrade_available = False
-                else:
-                    # No subscription - show limited data
-                    dashboard_data = {
-                        'message': 'No active subscription',
-                        'recent_alerts': await get_limited_alerts(cur, user_id, limit=3)
+            try:
+                with conn.cursor() as cur:
+                    # Get user details
+                    cur.execute("""
+                        SELECT id, email, name, phone, plan_id, subscription_status, dashboard_type,
+                               country, state, district, created_at
+                        FROM users 
+                        WHERE id = %s
+                    """, (user_id,))
+                    
+                    user_row = cur.fetchone()
+                    if not user_row:
+                        raise HTTPException(status_code=404, detail="User not found")
+                    
+                    (uid, email, name, phone, plan_id, subscription_status, dashboard_type,
+                     country, state, district, created_at) = user_row
+                    
+                    user_info = {
+                        'id': uid,
+                        'email': email,
+                        'name': name,
+                        'phone': phone,
+                        'plan_id': plan_id,
+                        'subscription_status': subscription_status,
+                        'dashboard_type': dashboard_type,
+                        'location': {
+                            'country': country,
+                            'state': state,
+                            'district': district
+                        },
+                        'member_since': created_at.isoformat() if created_at else None
                     }
-                    upgrade_available = True
-                
-                return DashboardResponse(
-                    dashboard_type=dashboard_type or 'none',
-                    user=user_info,
-                    data=dashboard_data,
-                    upgrade_available=upgrade_available
-                )
+                    
+                    # Determine dashboard data based on plan
+                    if dashboard_type == 'basic':
+                        dashboard_data = await get_basic_dashboard_data(cur, user_id)
+                        upgrade_available = True
+                    elif dashboard_type == 'personal':
+                        dashboard_data = await get_personal_dashboard_data(cur, user_id)
+                        upgrade_available = True  # Can upgrade to Family
+                    elif dashboard_type == 'family_admin':
+                        dashboard_data = await get_family_dashboard_data(cur, user_id)
+                        upgrade_available = False
+                    else:
+                        # No subscription - show limited data
+                        dashboard_data = {
+                            'message': 'No active subscription',
+                            'recent_alerts': await get_limited_alerts(cur, user_id, limit=3)
+                        }
+                        upgrade_available = True
+                    
+                    return DashboardResponse(
+                        dashboard_type=dashboard_type or 'none',
+                        user=user_info,
+                        data=dashboard_data,
+                        upgrade_available=upgrade_available
+                    )
+            except HTTPException:
+                raise
+            except Exception as e:
+                conn.rollback()
+                print(f"[DASHBOARD] Error in transaction: {str(e)}", flush=True)
+                raise
                 
     except HTTPException:
         raise
