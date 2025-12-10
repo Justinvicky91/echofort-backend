@@ -33,6 +33,7 @@ def generate_jwt_token(user_id: int, email: str, dashboard_type: str = None) -> 
         'user_id': user_id,
         'email': email,
         'dashboard_type': dashboard_type,
+        'subscription_status': 'active' if dashboard_type else 'inactive',
         'exp': datetime.utcnow() + timedelta(days=30),  # Token expires in 30 days
         'iat': datetime.utcnow()
     }
