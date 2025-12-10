@@ -180,7 +180,7 @@ async def get_personal_dashboard_data(cur, user_id: int) -> dict:
     """
     # Get scam alerts (last 30 days)
     cur.execute("""
-        SELECT id, title, description, severity, scam_type, created_at
+        SELECT id, title, description, severity, created_at
         FROM scam_alerts
         WHERE created_at >= NOW() - INTERVAL '30 days'
         ORDER BY created_at DESC
@@ -194,8 +194,7 @@ async def get_personal_dashboard_data(cur, user_id: int) -> dict:
             'title': row[1],
             'description': row[2],
             'severity': row[3],
-            'scam_type': row[4],
-            'created_at': row[5].isoformat() if row[5] else None
+            'created_at': row[4].isoformat() if row[4] else None
         })
     
     # Get call logs (if table exists)
